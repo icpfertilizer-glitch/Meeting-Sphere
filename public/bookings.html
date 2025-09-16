@@ -17,6 +17,54 @@
   <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
 
   <style>
+  /* input ที่ readonly ให้เป็นสีเทา เพื่อบอกผู้ใช้ว่าไม่ต้องกรอก */
+  input.form-control[readonly], input.form-control.readonly {
+    background-color: #f1f1f1 !important;
+    color: #888 !important;
+    border-color: #e0e0e0;
+    cursor: not-allowed;
+    opacity: 1;
+  }
+  /* ปรับ input[type='date'] ให้สูงเท่ากับ dropdown และ card calendar */
+  input[type='date'].form-control {
+    height: 48px;
+    min-height: 40px;
+    font-size: 1rem;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    box-sizing: border-box;
+  }
+  /* ปรับความสูง dayGrid ให้พอดีกับ calendar */
+  #calendar .fc-daygrid-body {
+    height: 100% !important;
+    min-height: 0;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  #calendar .fc-daygrid-body > table {
+    height: 100% !important;
+    min-height: 0;
+    max-height: 100%;
+    table-layout: fixed;
+  }
+  #calendar .fc-daygrid-body > table > tbody > tr {
+    height: 1fr;
+  }
+  #calendar .fc-daygrid-day {
+    height: 100%;
+    vertical-align: top;
+  }
+  /* ปรับ dayGrid ให้พอดีกับ calendar */
+  #calendar .fc-daygrid-body, #calendar .fc-scroller {
+    flex: 1 1 auto;
+    height: 100% !important;
+    min-height: 0;
+    max-height: 100%;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
   :root{
     --card-shadow: 0 10px 28px rgba(0,0,0,.08);
     --ring: 0 0 0 .2rem rgba(13,110,253,.25);
@@ -24,6 +72,8 @@
 
   body{ padding-top:72px; font-family: Arial, sans-serif; }
   .card{ border:0; box-shadow: var(--card-shadow); border-radius:16px; padding:16px; margin-bottom:16px; }
+  /* เว้นระยะ dropdown เลือกห้องใน modal */
+  #roomSelectWrap { margin-top: 12px; }
   .btn-soft{ background: var(--bs-secondary-bg); border:0; }
   .btn-soft:hover{ background: var(--bs-tertiary-bg); }
   .avatar-circle{ width:36px; height:36px; background:#0d6efd; color:#fff; display:flex; align-items:center; justify-content:center; border-radius:50%; font-weight:bold; }
@@ -42,6 +92,11 @@
   /* ===== FullCalendar – โทนสวยและอ่านง่าย ===== */
   #calendar .fc-toolbar{ gap:.5rem; }
   #calendar .fc-toolbar-title{ font-weight:800; letter-spacing:.2px; }
+
+  /* ปรับ calendar และ statusCard ให้สูงสมส่วนกัน */
+  .row.g-3 { align-items: stretch; }
+  #calendar { min-height: 70vh; display: flex; flex-direction: column; }
+  #statusCard { min-height: 70vh; display: flex; flex-direction: column; }
 
   .fc .fc-button{ border-radius:12px; }
   .fc .fc-button-primary:focus{ box-shadow: var(--ring); }
@@ -272,7 +327,7 @@
 
       <div class="menu-section">ส่วนรายงาน</div>
       <ul class="menu-list list-unstyled">
-        <li><a href="" class="menu-link"><span>📊</span> รายงานภาพรวม</a></li>
+  <li><a href="reportsummarize.html" class="menu-link"><span>📊</span> รายงานภาพรวม</a></li>
       </ul>
 
       <hr class="my-4">
@@ -336,18 +391,32 @@
           <input type="hidden" id="bookingId">
             <div class="mt-2">
             <label class="form-label">ชื่อผู้จอง</label>
-            <input type="text" id="bookerName" class="form-control" readonly>
+            <input type="text" id="bookerName" class="form-control">
+            <div class="form-text text-secondary" id="loginOperator" style="margin-top:4px;">
+              ผู้ดำเนินการ: <span id="loginOperatorName">—</span>
+            </div>
           </div>
           <div class="mb-2" id="roomSelectWrap">
-            <label class="form-label">เลือกห้อง</label>
-            <select id="roomSelect" class="form-select"></select>
+            <div class="row g-2 align-items-end">
+              <div class="col-8">
+                <label class="form-label">เลือกห้อง</label>
+                <select id="roomSelect" class="form-select"></select>
+              </div>
+              <div class="col-4" id="roomFloorWrap">
+                <label class="form-label">ชั้น</label>
+                <input type="text" id="roomFloor" class="form-control" readonly>
+              </div>
+            </div>
           </div>
           <div class="mb-2 d-none" id="roomNameWrap">
             <label class="form-label">ห้อง</label>
             <input type="text" id="roomName" class="form-control" readonly>
             <input type="hidden" id="roomId">
           </div>
-
+         <div class="col-4" id="roomFloorWrap">
+            <!-- ย้ายไปอยู่ขวาของเลือกห้อง -->
+          </div>
+          
           <div class="row g-2">
             <div class="col-6">
               <label class="form-label">วันที่</label>
@@ -462,6 +531,9 @@
       $('#menuUserName').textContent = name || 'ผู้ใช้';
       const av = document.querySelector('.avatar-circle');
       if (av) av.textContent = (name && name[0]) ? name[0].toUpperCase() : 'U';
+  // แสดงชื่อผู้ดำเนินการใน modal
+  const opName = document.getElementById('loginOperatorName');
+  if (opName) opName.textContent = name || 'ผู้ใช้';
     }
     function applyRoleToUI(role){
       document.documentElement.setAttribute('data-role', role);
@@ -693,18 +765,21 @@
       rooms.forEach(r=>{
         const opt = document.createElement('option');
         opt.value = r.id; opt.textContent = r.name || '(ไม่มีชื่อ)';
+        // ใช้ location แทน floor/level
+        opt.setAttribute('data-floor', r.location || '');
         selectEl.appendChild(opt);
       });
     }
 
     // ✅ ครึ่งชั่วโมง 08:00–18:00 + filter เฉพาะ "ตั้งแต่ตอนนี้" เมื่อเป็นวันนี้
     async function fillTimeSelects(roomId, dateStr, preStart=null, preEnd=null){
-      startSel.innerHTML = ''; endSel.innerHTML = '';
+      startSel.innerHTML = '';
+      endSel.innerHTML = '';
       const submitBtn = bookingForm.querySelector('button[type="submit"]');
       if (!roomId || !dateStr) { if (submitBtn) submitBtn.disabled = true; return; }
 
-      const DAY_START = 8*60;   // 08:00
-      const DAY_END   = 19*60;  // 19:00 (เวลาสิ้นสุดสูงสุด)
+      const DAY_START = 8*60;
+      const DAY_END   = 19*60;
       const todayStr  = toYmd(new Date());
       const taken = await fetchDayMeetings(dateStr, roomId);
 
@@ -712,7 +787,7 @@
       let startMin = DAY_START;
       if (dateStr === todayStr && !preStart) {
         const roundedNow = roundUpToNext30(toMin(nowHM()));
-        startMin = Math.max(DAY_START, Math.min(roundedNow, DAY_END - 30)); // ไม่เกิน 16:30
+        startMin = Math.max(DAY_START, Math.min(roundedNow, DAY_END - 30));
       }
 
       let startCandidates = [];
@@ -721,25 +796,27 @@
         startCandidates = startCandidates.filter(t => toMin(t) >= startMin);
       }
 
-      if (startCandidates.length === 0 && !preStart) {
-        const opt = document.createElement('option');
-        opt.value = ''; opt.textContent = '— ไม่มีช่วงเวลาที่เหลือในวันนี้ —';
-        opt.disabled = true; opt.selected = true;
-        startSel.appendChild(opt);
-        endSel.innerHTML = '';
-        if (submitBtn) submitBtn.disabled = true;
-        return;
-      }
-
-      if (preStart && !startCandidates.includes(preStart)) startCandidates.unshift(preStart);
-
+      // สร้าง option สำหรับ start time
       for (const s of startCandidates) {
+        // ตรวจสอบว่าช่วงเวลานี้ถูกจองแล้วหรือไม่
+        const isBusy = taken.some(m => isOverlapping(s, minToHH(toMin(s)+30), m.start, m.end));
         const opt = document.createElement('option');
-        opt.value = s; opt.textContent = s;
+        opt.value = s;
+        opt.textContent = s;
+        if (isBusy) {
+          opt.disabled = true;
+          opt.style.background = '#888';
+          opt.style.color = '#fff';
+        }
         startSel.appendChild(opt);
       }
-      if (preStart) startSel.value = preStart;
-      if (!startSel.value) startSel.value = startCandidates[0] || '';
+      // เลือกค่า default
+      if (preStart && startCandidates.includes(preStart)) startSel.value = preStart;
+      else {
+        // เลือก option แรกที่ไม่ disabled
+        const firstAvailable = Array.from(startSel.options).find(o=>!o.disabled);
+        if (firstAvailable) startSel.value = firstAvailable.value;
+      }
 
       // ==== end slots (ทุก 30 นาที, > start และ ≤ 19:00) ====
       function rebuildEnds(){
@@ -747,28 +824,25 @@
         const sVal = startSel.value;
         if (!sVal) { if (submitBtn) submitBtn.disabled = true; return; }
         const sMin = toMin(sVal);
-
-        const endCandidates = [];
-        for (let m = sMin + 30; m <= DAY_END; m += 30) endCandidates.push(minToHH(m));
-
-        const freeEnds = endCandidates.filter(candidate => {
-          if (preStart && preEnd && sVal===preStart && candidate===preEnd) return true; // อนุญาตคู่เดิม
-          return !taken.some(m => isOverlapping(sVal, candidate, m.start, m.end));
-        });
-
-        if (preEnd && !freeEnds.includes(preEnd)) freeEnds.unshift(preEnd);
-
-        for (const e of freeEnds) {
+        for (let m = sMin + 30; m <= DAY_END; m += 30) {
+          const e = minToHH(m);
+          // ตรวจสอบว่าช่วงเวลานี้ถูกจองแล้วหรือไม่
+          const isBusy = taken.some(mtg => isOverlapping(sVal, e, mtg.start, mtg.end));
           const opt = document.createElement('option');
-          opt.value = e; opt.textContent = e;
+          opt.value = e;
+          opt.textContent = e;
+          if (isBusy) {
+            opt.disabled = true;
+            opt.style.background = '#888';
+            opt.style.color = '#fff';
+          }
           endSel.appendChild(opt);
         }
-
-        if (preEnd) endSel.value = preEnd;
-        if (!endSel.value && freeEnds.length) endSel.value = freeEnds[0] || '';
-        if (submitBtn) submitBtn.disabled = endSel.options.length === 0;
+        // เลือกค่า default
+        const firstAvailable = Array.from(endSel.options).find(o=>!o.disabled);
+        if (firstAvailable) endSel.value = firstAvailable.value;
+        if (submitBtn) submitBtn.disabled = endSel.options.length === 0 || !firstAvailable;
       }
-
       startSel.onchange = rebuildEnds;
       rebuildEnds();
     }
@@ -795,8 +869,29 @@
 
         // ✅ รองรับ preStart/preEnd ที่ส่งมา
         fillTimeSelects(roomSelect.value, dateInput.value, start, end);
-        roomSelect.onchange = ()=> fillTimeSelects(roomSelect.value, dateInput.value, start, end);
+        roomSelect.onchange = ()=> {
+          fillTimeSelects(roomSelect.value, dateInput.value, start, end);
+          // อัปเดตฟิลด์ชั้นทุกครั้งที่เปลี่ยนห้อง
+          const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+          if (selectedOption && selectedOption.getAttribute('data-floor')) {
+            $('#roomFloorWrap').classList.remove('d-none');
+            $('#roomFloor').value = selectedOption.getAttribute('data-floor');
+          } else {
+            $('#roomFloorWrap').classList.add('d-none');
+            $('#roomFloor').value = '';
+          }
+        };
         dateInput.onchange  = ()=> fillTimeSelects(roomSelect.value, dateInput.value, start, end);
+
+        // อัปเดตฟิลด์ชั้นเมื่อ modal เปิด
+        const selectedOption = roomSelect.options[roomSelect.selectedIndex];
+        if (selectedOption && selectedOption.getAttribute('data-floor')) {
+          $('#roomFloorWrap').classList.remove('d-none');
+          $('#roomFloor').value = selectedOption.getAttribute('data-floor');
+        } else {
+          $('#roomFloorWrap').classList.add('d-none');
+          $('#roomFloor').value = '';
+        }
 
         $('#title').value = '';
         $('#contact').value = '';
@@ -838,7 +933,7 @@
         $('#bookingDate').value = meeting.date;
         $('#title').value = meeting.title || '';
         $('#contact').value = meeting.contact || '';
-        bookerEl.value = currentUser?.name || meeting.bookerName || meeting.userName || '';
+        bookerEl.value = meeting.bookerName || meeting.userName || currentUser?.name || '';
 
         const btnDel = $('#btnDelete');
         btnDel.classList.remove('d-none');
@@ -1047,7 +1142,7 @@
         todayDocs = snap.docs.map(d=>({ id:d.id, ...d.data() }));
         renderStatusPanelByRoom();
       }, _err=>{ todayDocs=[]; renderStatusPanelByRoom(); });
-      setInterval(renderStatusPanelByRoom, 30000);
+      setInterval(renderStatusPanelByRoom, 10000);
     }
 
     // ---- Init ----

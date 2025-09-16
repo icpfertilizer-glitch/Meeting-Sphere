@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="th" data-bs-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>รายงานภาพรวมการจองห้องประชุม</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <link href="assets/css/styles.css" rel="stylesheet" />
+  <script src="assets/js/menu.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    .card { border:0; box-shadow: 0 10px 28px rgba(0,0,0,.08); border-radius:16px; padding:16px; margin-bottom:16px; }
+    .summary-card { min-width: 160px; }
+    .table-responsive { max-height: 500px; overflow-y: auto; }
+  </style>
+</head>
+<body>
+  <!-- Navbar แบบเดียวกับหน้าอื่นๆ -->
+  <nav class="navbar navbar-expand-lg border-bottom fixed-top bg-body">
+    <div class="container-fluid">
+      <button id="menuFab" class="btn btn-link p-0 me-3" aria-label="เมนู" aria-expanded="false">
+        <span class="menu-icon"></span>
+        <span class="menu-icon"></span>
+        <span class="menu-icon"></span>
+      </button>
+      <a class="navbar-brand fw-bold" href="#">รายงานภาพรวม</a>
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <span id="userDisplayName" class="fw-semibold text-primary">ผู้ใช้</span>
+        <button id="btnLogout" class="btn btn-danger btn-sm">ออกจากระบบ</button>
+      </div>
+    </div>
+  </nav>
+  <!-- Sidebar Overlay -->
+  <div id="menuOverlay" class="menu-overlay" aria-hidden="true">
+    <aside class="menu-drawer shadow-lg">
+      <div class="menu-header d-flex align-items-center justify-content-between mb-4">
+        <h5 class="fw-bold mb-0">เมนูระบบ</h5>
+        <button id="menuClose" class="btn btn-outline-secondary btn-sm">✕</button>
+      </div>
+      <div class="menu-section">Dashboard</div>
+      <ul class="menu-list list-unstyled">
+        <li><a href="dashboard.html" class="menu-link"><span>🏠</span> Dashboard</a></li>
+      </ul>
+      <div class="menu-section">ส่วนทั่วไป</div>
+      <ul class="menu-list list-unstyled">
+        <li><a href="bookings.html" class="menu-link"><span>🙍</span> จองห้องประชุม</a></li>
+      </ul>
+      <div class="menu-section" data-required-role="admin">ส่วนจัดการข้อมูล</div>
+      <ul class="menu-list list-unstyled" data-required-role="admin">
+        <li class="menu-dropdown">
+          <button class="menu-link d-flex justify-content-between align-items-center w-100">
+            <span>👥 จัดการ</span>
+            <span class="caret">▾</span>
+          </button>
+          <ul class="submenu list-unstyled">
+            <li><a href="Admin.html" class="menu-link">- การจัดการสิทธิ์</a></li>
+            <li><a href="meeting-rooms.html" class="menu-link">- จัดการห้องประชุม</a></li>
+          </ul>
+        </li>
+        <li>
+          <a href="" class="menu-link"><span>⚙️</span> ตั้งค่า</a>
+        </li>
+      </ul>
+      <div class="menu-section">ส่วนรายงาน</div>
+      <ul class="menu-list list-unstyled">
+        <li><a href="reportsummarize.html" class="menu-link"><span>📊</span> รายงานภาพรวม</a></li>
+      </ul>
+      <hr class="my-4">
+      <div class="d-flex align-items-center gap-3">
+        <div class="avatar-circle">U</div>
+        <div>
+          <div class="fw-semibold" id="menuUserName">—</div>
+          <div class="text-secondary small">กำลังใช้งานอยู่</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+  <main class="container-fluid px-3 px-md-4" style="padding-top:80px;">
+    <h2 class="fw-bold mb-3">รายงานภาพรวมการจองห้องประชุม</h2>
+    <div class="row g-3 mb-4">
+      <div class="col-auto">
+        <label class="form-label">ช่วงวันที่</label>
+        <input type="date" id="dateStart" class="form-control" value="" />
+      </div>
+      <div class="col-auto">
+        <label class="form-label">ถึง</label>
+        <input type="date" id="dateEnd" class="form-control" value="" />
+      </div>
+      <div class="col-auto">
+        <label class="form-label">ห้องประชุม</label>
+        <select id="roomFilter" class="form-select"><option value="">ทุกห้อง</option></select>
+      </div>
+      <div class="col-auto">
+        <label class="form-label">ผู้จอง</label>
+        <input type="text" id="userFilter" class="form-control" placeholder="ค้นหาชื่อผู้จอง" />
+      </div>
+      <div class="col-auto align-self-end">
+        <button id="btnFilter" class="btn btn-primary">กรองข้อมูล</button>
+        <button id="btnExport" class="btn btn-outline-success ms-2"><i class="bi bi-file-earmark-excel"></i> Export</button>
+      </div>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-3">
+        <div class="card summary-card text-center">
+          <div class="fw-bold fs-3" id="totalBookings">0</div>
+          <div class="text-secondary">จำนวนการจอง</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card summary-card text-center">
+          <div class="fw-bold fs-3" id="totalRooms">0</div>
+          <div class="text-secondary">ห้องที่ถูกใช้งาน</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card summary-card text-center">
+          <div class="fw-bold fs-3" id="totalUsers">0</div>
+          <div class="text-secondary">ผู้จองทั้งหมด</div>
+        </div>
+      </div>
+    </div>
+    <div class="row g-3 mb-4">
+      <div class="col-md-6">
+        <div class="card">
+          <h6 class="fw-bold">จำนวนการจองรายวัน</h6>
+          <canvas id="bookingsChart" height="320" style="max-height:320px;"></canvas>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <h6 class="fw-bold">สัดส่วนการใช้งานแต่ละห้อง</h6>
+          <canvas id="roomsPieChart" height="320" style="max-height:320px;"></canvas>
+        </div>
+      </div>
+    </div>
+    <div class="card mb-4">
+      <h6 class="fw-bold">รายละเอียดการจอง</h6>
+      <div class="table-responsive">
+        <table class="table table-bordered table-hover" id="bookingsTable">
+          <thead class="table-light">
+            <tr>
+              <th>วันที่</th>
+              <th>เวลา</th>
+              <th>ห้องประชุม</th>
+              <th>ผู้จอง</th>
+              <th>เรื่อง</th>
+              <th>เบอร์ติดต่อ</th>
+              <th>สถานะ</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <script type="module">
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+    // --- Role / User ---
+    const DEFAULT_ROLE = 'viewer';
+    let currentUser = null;  // {user, role, name}
+    async function getUserData(uid) {
+      const snap = await getDocs(query(collection(db, 'users'), where('__name__', '==', uid)));
+      if (!snap.empty) {
+        const data = snap.docs[0].data() || {};
+        return { name: data.name || 'ผู้ใช้', role: (data.role || DEFAULT_ROLE).toLowerCase() };
+      }
+      return { name: 'ผู้ใช้', role: DEFAULT_ROLE };
+    }
+    function applyUserDisplay(name) {
+      $('#userDisplayName').textContent = name || 'ผู้ใช้';
+      $('#menuUserName').textContent = name || 'ผู้ใช้';
+      const av = document.querySelector('.avatar-circle');
+      if (av) av.textContent = (name && name[0]) ? name[0].toUpperCase() : 'U';
+    }
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getFirestore, collection, query, where, orderBy, getDocs } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_G4hfiis6DjmPiwsh5-hnNKVztMfd_T4",
+      authDomain: "booking-sw.firebaseapp.com",
+      projectId: "booking-sw",
+      storageBucket: "booking-sw.firebase.storage.app",
+      messagingSenderId: "134246403096",
+      appId: "1:134246403096:web:900da94277e8b70c4cc76d"
+    };
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const roomsRef = collection(db, 'meeting_rooms');
+    const meetingsRef = collection(db, 'meetings');
+    // --- UI Elements ---
+    const $ = s => document.querySelector(s);
+    const bookingsTableBody = $('#bookingsTable tbody');
+    const bookingsChartEl = $('#bookingsChart');
+    const roomsPieChartEl = $('#roomsPieChart');
+    // --- State ---
+    let rooms = [];
+    let bookings = [];
+    // --- Chart.js ---
+    let bookingsChart, roomsPieChart;
+
+    // --- Set default date range to MTD ---
+    function setDefaultMTD() {
+      const now = new Date();
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      $('#dateStart').value = fmt(firstDay);
+      $('#dateEnd').value = fmt(now);
+    }
+
+    // --- Load Rooms ---
+    async function loadRooms() {
+      const snap = await getDocs(query(roomsRef, orderBy('name')));
+      rooms = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      const roomFilter = $('#roomFilter');
+      roomFilter.innerHTML = '<option value="">ทุกห้อง</option>';
+      rooms.forEach(r => {
+        const opt = document.createElement('option');
+        opt.value = r.id;
+        opt.textContent = r.name || '(ไม่มีชื่อ)';
+        roomFilter.appendChild(opt);
+      });
+    }
+    // --- Load Bookings ---
+    async function loadBookings() {
+      const dateStart = $('#dateStart').value;
+      const dateEnd = $('#dateEnd').value;
+      const roomId = $('#roomFilter').value;
+      const userFilter = $('#userFilter').value.trim();
+      let q = query(meetingsRef, orderBy('date'));
+      if (dateStart) q = query(q, where('date', '>=', dateStart));
+      if (dateEnd) q = query(q, where('date', '<=', dateEnd));
+      const snap = await getDocs(q);
+      bookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+      if (roomId) bookings = bookings.filter(b => b.roomId === roomId);
+      if (userFilter) bookings = bookings.filter(b => (b.bookerName || b.userName || '').includes(userFilter));
+      renderSummary();
+      renderCharts();
+      renderTable();
+    }
+    // --- Render Summary ---
+    function renderSummary() {
+      $('#totalBookings').textContent = bookings.length;
+      $('#totalRooms').textContent = [...new Set(bookings.map(b => b.roomId))].length;
+      $('#totalUsers').textContent = [...new Set(bookings.map(b => b.bookerName || b.userName))].length;
+    }
+    // --- Render Charts ---
+    function renderCharts() {
+      // Bookings per day
+      const byDate = {};
+      bookings.forEach(b => { byDate[b.date] = (byDate[b.date] || 0) + 1; });
+      const dateLabels = Object.keys(byDate).sort();
+      const dateCounts = dateLabels.map(d => byDate[d]);
+      if (bookingsChart) bookingsChart.destroy();
+      bookingsChart = new Chart(bookingsChartEl, {
+        type: 'bar',
+        data: { labels: dateLabels, datasets: [{ label: 'จำนวนการจอง', data: dateCounts, backgroundColor: '#0d6efd' }] },
+        options: { plugins: { legend: { display: false } } }
+      });
+      // Room usage pie
+      const byRoom = {};
+      bookings.forEach(b => { byRoom[b.roomId] = (byRoom[b.roomId] || 0) + 1; });
+      const roomLabels = rooms.filter(r => byRoom[r.id]).map(r => r.name || '(ไม่มีชื่อ)');
+      const roomCounts = rooms.filter(r => byRoom[r.id]).map(r => byRoom[r.id]);
+      if (roomsPieChart) roomsPieChart.destroy();
+      roomsPieChart = new Chart(roomsPieChartEl, {
+        type: 'pie',
+        data: { labels: roomLabels, datasets: [{ data: roomCounts, backgroundColor: ['#0d6efd','#198754','#ffc107','#dc3545','#6f42c1','#20c997','#fd7e14'] }] },
+        options: { plugins: { legend: { position: 'bottom' } } }
+      });
+    }
+    // --- Render Table ---
+    function renderTable() {
+      bookingsTableBody.innerHTML = '';
+      bookings.forEach(b => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${b.date || ''}</td>
+          <td>${b.start || ''}–${b.end || ''}</td>
+          <td>${rooms.find(r => r.id === b.roomId)?.name || b.roomName || ''}</td>
+          <td>${b.bookerName || b.userName || ''}</td>
+          <td>${b.title || ''}</td>
+          <td>${b.contact || ''}</td>
+          <td>${b.status || 'ยืนยัน'}</td>
+        `;
+        bookingsTableBody.appendChild(tr);
+      });
+    }
+    // --- Export Excel (.xlsx) ---
+    $('#btnExport').addEventListener('click', () => {
+    // สร้างข้อมูลจาก bookingsTable โดยตรง (ภาษาไทย)
+    const table = document.getElementById('bookingsTable');
+    const ws = XLSX.utils.table_to_sheet(table, {raw:true});
+    // สร้าง workbook
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Bookings');
+    // สร้างชื่อไฟล์ booking_report_YYYY-MM-DD_HH-mm.xlsx
+    const now = new Date();
+    const pad = n => String(n).padStart(2,'0');
+    const dateStr = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+    const timeStr = `${pad(now.getHours())}-${pad(now.getMinutes())}`;
+    const filename = `booking_report_${dateStr}_${timeStr}.xlsx`;
+    XLSX.writeFile(wb, filename);
+    });
+    // --- Filter ---
+    $('#btnFilter').addEventListener('click', loadBookings);
+    // --- Init ---
+    // --- Auth ---
+    const auth = getAuth(app);
+    onAuthStateChanged(auth, async (user) => {
+      if (!user) { window.location.href = 'index.html'; return; }
+      const { name, role } = await getUserData(user.uid);
+      currentUser = { user, role, name };
+      applyUserDisplay(name);
+      setDefaultMTD();
+      loadRooms().then(loadBookings);
+    });
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
