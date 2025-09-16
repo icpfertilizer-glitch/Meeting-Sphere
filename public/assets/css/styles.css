@@ -1,0 +1,152 @@
+/* ========== Base ========== */
+.navbar-brand { font-weight: 700; }
+.container-narrow { max-width: 960px; }
+body { padding-top: 72px; background: #efe5dc; font-family: Arial, sans-serif; color:#3b3a36; } /* Earth tone background + text */
+
+:root{
+  --drawer-width: 300px;
+  --radius-lg: 16px;
+  --ease-fast: .28s cubic-bezier(.2,.7,.2,1);
+
+  /* โทนสีใหม่ */
+  --primary-color: #c0392b;      /* แดงเข้ม */
+  --secondary-color: #e67e22;    /* ส้ม */
+  --tertiary-color: #f1c40f;     /* เหลือง */
+  --body-bg: #efe5dc;            /* Earth tone */
+  --body-color: #3b3a36;         /* ตัวอักษรเข้ม */
+  --border-color: #d6c6b0;       /* ขอบเบา ๆ */
+  --primary-bg-subtle: #fbeee6;  /* hover background */
+}
+
+/* ลด motion เมื่อผู้ใช้ตั้งค่า prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce){
+  * { transition: none !important; animation: none !important; }
+}
+
+/* ========== ปุ่ม Hamburger บน Navbar ========== */
+.menu-fab{
+  display:inline-flex; flex-direction:column; justify-content:center; gap:4px;
+  width:38px; height:38px; border:0; border-radius:10px; padding:6px 8px;
+  background: var(--primary-bg-subtle); cursor:pointer; color: var(--primary-color);
+}
+.menu-fab:hover{ background: #f7dcc5; }
+.menu-fab-bar{ display:block; width:100%; height:2px; background: var(--primary-color); border-radius: 1px; }
+
+#menuFab { border: none; background: transparent; cursor: pointer; }
+.menu-icon { display:block; width:22px; height:2px; background: var(--primary-color); margin:5px 0; border-radius:1px; }
+
+/* ========== Overlay + Drawer (Left) ========== */
+.menu-overlay {
+  position: fixed; inset: 0; z-index: 1055;
+  background: rgba(59, 58, 54, 0.24);
+  -webkit-backdrop-filter: blur(2px);
+  backdrop-filter: blur(2px);
+  opacity: 0; pointer-events: none;
+  transition: opacity .24s ease;
+}
+.menu-overlay.show { opacity: 1; pointer-events: auto; overflow: hidden; }
+
+.menu-drawer {
+  position: absolute; top: 0; left: 0;
+  height: 100%; width: var(--drawer-width); max-width: 92vw;
+  background: var(--body-bg);
+  border-right: 1px solid var(--border-color);
+  padding: 80px 20px 20px;
+  transform: translateX(-100%);
+  transition: transform var(--ease-fast), box-shadow var(--ease-fast);
+  display: flex; flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  box-shadow: 0 0 0 rgba(0,0,0,0);
+}
+.menu-overlay.show .menu-drawer { transform: translateX(0); box-shadow: 12px 0 24px rgba(0,0,0,.08); }
+
+/* ========== Header ใน Drawer ========== */
+.menu-header { padding-bottom: 10px; border-bottom: 1px solid var(--border-color); color: var(--primary-color); }
+
+/* ========== รายการเมนู ========== */
+.menu-list { margin: 0; padding: 0; list-style: none; }
+.menu-link {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: 12px;
+  text-decoration: none; color: var(--body-color);
+  font-weight: 500; transition: background .18s ease, color .18s ease, border-color .18s ease, transform .12s ease;
+  border: 1px solid transparent;
+}
+.menu-link:hover {
+  background: var(--primary-bg-subtle);
+  color: var(--primary-color);
+}
+.menu-link:focus-visible{
+  outline: 0;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary-color) 22%, transparent);
+}
+.menu-link.is-active{
+  background: var(--primary-bg-subtle);
+  color: var(--primary-color);
+  border-color: color-mix(in srgb, var(--primary-color) 35%, transparent);
+}
+
+/* ========== Section Heading ========== */
+.menu-section {
+  font-size: 0.85rem; font-weight: 800; letter-spacing: .02em;
+  text-transform: uppercase;
+  color: var(--secondary-color);
+  margin: 20px 0 8px; padding-left: 4px;
+}
+
+/* ========== Dropdown ========== */
+.menu-dropdown > .menu-link { cursor: pointer; justify-content: space-between; }
+.menu-dropdown .caret { margin-left: 8px; transition: transform .18s ease; }
+.menu-dropdown.open .caret { transform: rotate(180deg); }
+
+.submenu {
+  overflow: hidden; max-height: 0; opacity: 0;
+  margin-left: 8px; padding-left: 10px;
+  border-left: 2px solid var(--border-color);
+  transition: max-height .22s ease, opacity .18s ease, margin .18s ease;
+}
+.menu-dropdown.open .submenu {
+  max-height: 480px;
+  opacity: 1; margin-top: 6px; margin-bottom: 6px;
+}
+.submenu .menu-link { padding: 8px 10px; border-radius: 10px; }
+
+/* ========== Avatar ผู้ใช้ ========== */
+.avatar-circle{
+  width: 40px; height: 40px; border-radius: 50%;
+  background: var(--secondary-color);
+  display: flex; align-items: center; justify-content: center;
+  font-weight: 700; color: #fff;
+}
+
+/* ========== Card ========== */
+.card{
+  background: #ffffff; /* เหลืองอ่อน */
+  border-radius: var(--radius-lg);
+  box-shadow: 0 6px 24px rgba(0,0,0,.08);
+  padding:16px;
+  margin-bottom:16px;
+  color:#3b3a36;
+}
+
+/* ========== Buttons Soft ========== */
+.btn-soft {
+  background: #f9d7a0;
+  color: #3b3a36;
+  border:0;
+  transition: background .2s ease;
+}
+.btn-soft:hover { background: #f1c40f; color:#fff; }
+
+/* ========== Scrollbar ใน Drawer ========== */
+.menu-drawer{
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--body-color) 20%, transparent) transparent;
+}
+.menu-drawer::-webkit-scrollbar{ width: 8px; }
+.menu-drawer::-webkit-scrollbar-thumb{
+  background: color-mix(in srgb, var(--body-color) 18%, transparent);
+  border-radius: 8px;
+}

@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="th" data-bs-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Admin Panel • การจัดการสิทธิ์</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  
+  <!-- ห้ามแก้ไข -->
+  <link href="assets/css/styles.css" rel="stylesheet" />
+  <script src="assets/js/menu.js" defer></script>
+
+  <!-- DataTables CSS -->
+  <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet"/>
+
+  <style>
+    body { padding-top: 72px; font-family: Arial, sans-serif; }
+    .card { border:0; box-shadow: 0 6px 24px rgba(0,0,0,.08); border-radius:16px; padding:16px; margin-bottom:16px;}
+    .avatar-circle { width:36px; height:36px; background:#0d6efd; color:white; display:flex; align-items:center; justify-content:center; border-radius:50%; font-weight:bold; }
+    select.form-select { min-width:150px; }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg border-bottom fixed-top bg-body">
+    <div class="container-fluid">
+      <button id="menuFab" class="btn btn-link p-0 me-3" aria-label="เมนู" aria-expanded="false">
+        <span class="menu-icon"></span>
+        <span class="menu-icon"></span>
+        <span class="menu-icon"></span>
+      </button>
+      <a class="navbar-brand fw-bold" href="#">System Home</a>
+
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <span id="userDisplayName" class="fw-semibold text-primary">ผู้ใช้</span>
+        <button id="btnLogout" class="btn btn-danger btn-sm">ออกจากระบบ</button>
+      </div>
+    </div>
+  </nav>
+  <!-- Sidebar Overlay -->
+  <div id="menuOverlay" class="menu-overlay" aria-hidden="true">
+    <aside class="menu-drawer shadow-lg">
+      <div class="menu-header d-flex align-items-center justify-content-between mb-4">
+        <h5 class="fw-bold mb-0">เมนูระบบ</h5>
+        <button id="menuClose" class="btn btn-outline-secondary btn-sm">✕</button>
+      </div>
+    <div class="menu-section">Dashboard</div>
+      <ul class="menu-list list-unstyled">
+        <li><a href="dashboard.html" class="menu-link"><span>🏠</span> Dashboard</a></li>
+      </ul>
+
+      <div class="menu-section">ส่วนทั่วไป</div>
+      <ul class="menu-list list-unstyled">
+        <li><a href="bookings.html" class="menu-link"><span>🙍</span> จองห้องประชุม</a></li>
+      </ul>
+
+        <div class="menu-section" data-required-role="admin">ส่วนจัดการข้อมูล</div>
+    <ul class="menu-list list-unstyled" data-required-role="admin">
+    <li class="menu-dropdown">
+        <button class="menu-link d-flex justify-content-between align-items-center w-100">
+        <span>👥 จัดการ</span>
+        <span class="caret">▾</span>
+        </button>
+        <ul class="submenu list-unstyled">
+        <li><a href="Admin.html" class="menu-link">- การจัดการสิทธิ์</a></li>
+        <li><a href="meeting-rooms.html" class="menu-link">- จัดการห้องประชุม</a></li>
+        </ul>
+    </li>
+    <li>
+        <a href="" class="menu-link"><span>⚙️</span> ตั้งค่า</a>
+    </li>
+    </ul>
+
+
+      <div class="menu-section">ส่วนรายงาน</div>
+      <ul class="menu-list list-unstyled">
+        <li><a href="" class="menu-link"><span>📊</span> รายงานภาพรวม</a></li>
+      </ul>
+
+      <hr class="my-4">
+
+      <div class="d-flex align-items-center gap-3">
+        <div class="avatar-circle">U</div>
+        <div>
+          <div class="fw-semibold" id="menuUserName">—</div>
+          <div class="text-secondary small">กำลังใช้งานอยู่</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Main Content -->
+  <main class="container">
+    <h2 class="mb-3">การจัดการสิทธิ์ผู้ใช้</h2>
+    <div class="card">
+      <table id="usersTable" class="table table-hover table-striped align-middle">
+        <thead class="table-light">
+          <tr>
+            <th>ชื่อผู้ใช้</th>
+            <th>อีเมล</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody id="user-list">
+          <tr>
+            <td colspan="3" class="text-center py-4">กำลังโหลดข้อมูลผู้ใช้...</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Firebase + Auth -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+    import { getFirestore, collection, getDocs, doc, getDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_G4hfiis6DjmPiwsh5-hnNKVztMfd_T4",
+      authDomain: "booking-sw.firebaseapp.com",
+      projectId: "booking-sw",
+      storageBucket: "booking-sw.firebasestorage.app",
+      messagingSenderId: "134246403096",
+      appId: "1:134246403096:web:900da94277e8b70c4cc76d"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const roles = ['Admin', 'Manager', 'Staff', 'No Access'];
+    let dataTable;
+
+    // โหลดรายชื่อผู้ใช้
+    async function loadUsers() {
+      const snapshot = await getDocs(collection(db, 'users'));
+      const tbody = document.getElementById('user-list');
+      tbody.innerHTML = '';
+
+      if(snapshot.empty){
+        tbody.innerHTML = `<tr><td colspan="3" class="text-center py-4">ไม่พบข้อมูลผู้ใช้</td></tr>`;
+        return;
+      }
+
+      snapshot.forEach(docSnap => {
+        const user = docSnap.data();
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${user.name || '-'}</td>
+          <td>${user.email || '-'}</td>
+          <td>
+            <select class="form-select form-select-sm" data-uid="${docSnap.id}">
+              ${roles.map(r => `<option value="${r}" ${user.role === r ? 'selected' : ''}>${r}</option>`).join('')}
+            </select>
+          </td>
+        `;
+        tbody.appendChild(tr);
+
+        tr.querySelector('select').addEventListener('change', async e => {
+          const uid = e.target.getAttribute('data-uid');
+          const newRole = e.target.value;
+          await updateDoc(doc(db,'users',uid), { role: newRole });
+          if(dataTable) dataTable.row(tr).invalidate().draw(false);
+        });
+      });
+
+      if(!dataTable) {
+        dataTable = new DataTable('#usersTable', {
+          pageLength: 10,
+          lengthMenu: [5,10,25,50],
+          columnDefs: [{ orderable: false, targets: 2 }]
+        });
+      }
+    }
+
+    // โหลดชื่อผู้ใช้ปัจจุบันจาก Firestore
+    async function loadCurrentUser() {
+      const user = auth.currentUser;
+      if(!user) return;
+
+      const docSnap = await getDoc(doc(db, 'users', user.uid));
+      if(!docSnap.exists()) return;
+
+      const userData = docSnap.data();
+      const displayName = userData.name || user.email || 'ผู้ใช้';
+
+      document.getElementById('userDisplayName').textContent = displayName;
+
+      const avatar = document.querySelector('.avatar-circle');
+      if(avatar) avatar.textContent = displayName[0].toUpperCase();
+    }
+
+    function watchAuth() {
+      onAuthStateChanged(auth, async user => {
+        if(!user){ window.location.href='index.html'; return; }
+        await loadCurrentUser();
+        await loadUsers();
+      });
+    }
+
+    document.getElementById('btnLogout').addEventListener('click', async () => {
+      await signOut(auth);
+      window.location.href='index.html';
+    });
+
+    watchAuth();
+  </script>
+
+  <!-- DataTables JS -->
+  <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

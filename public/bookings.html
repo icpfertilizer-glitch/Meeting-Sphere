@@ -1,0 +1,1086 @@
+<!doctype html>
+<html lang="th" data-bs-theme="light">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>จองห้องประชุม • Calendar</title>
+
+  <!-- Bootstrap CSS + Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" />
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet" />
+  <!-- ของเดิม -->
+  <link href="assets/css/styles.css" rel="stylesheet" />
+  <script src="assets/js/menu.js" defer></script>
+
+  <!-- FullCalendar -->
+  <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+
+  <style>
+  :root{
+    --card-shadow: 0 10px 28px rgba(0,0,0,.08);
+    --ring: 0 0 0 .2rem rgba(13,110,253,.25);
+  }
+
+  body{ padding-top:72px; font-family: Arial, sans-serif; }
+  .card{ border:0; box-shadow: var(--card-shadow); border-radius:16px; padding:16px; margin-bottom:16px; }
+  .btn-soft{ background: var(--bs-secondary-bg); border:0; }
+  .btn-soft:hover{ background: var(--bs-tertiary-bg); }
+  .avatar-circle{ width:36px; height:36px; background:#0d6efd; color:#fff; display:flex; align-items:center; justify-content:center; border-radius:50%; font-weight:bold; }
+
+  /* ทำให้ main กว้างเต็มหน้าจอ */
+  main.container, main.container-fluid{ max-width:100% !important; width:100% !important; }
+
+  /* ===== Action bar (ด้านบนของ main) ===== */
+  .action-bar{
+    display:flex; align-items:center; justify-content:space-between; gap:.75rem;
+    padding:8px 0 4px; margin-bottom:.5rem;
+    border-bottom:1px dashed var(--bs-border-color);
+  }
+  .action-bar .btn{ box-shadow: 0 6px 16px rgba(13,110,253,.12); }
+
+  /* ===== FullCalendar – โทนสวยและอ่านง่าย ===== */
+  #calendar .fc-toolbar{ gap:.5rem; }
+  #calendar .fc-toolbar-title{ font-weight:800; letter-spacing:.2px; }
+
+  .fc .fc-button{ border-radius:12px; }
+  .fc .fc-button-primary:focus{ box-shadow: var(--ring); }
+
+  .fc-theme-standard td, .fc-theme-standard th{ border-color: var(--bs-border-color); }
+  .fc .fc-col-header-cell{ background: var(--bs-secondary-bg); }
+
+  /* วันนี้ไฮไลท์ */
+  .fc .fc-daygrid-day.fc-day-today{
+    background: linear-gradient(180deg, rgba(13,110,253,.08), transparent 70%);
+  }
+  .fc .fc-daygrid-day-frame:hover{ box-shadow: inset 0 0 0 2px rgba(13,110,253,.15); }
+
+  /* เสาร์-อาทิตย์สีจาง */
+  .fc .fc-day-sat .fc-daygrid-day-frame,
+  .fc .fc-day-sun .fc-daygrid-day-frame{
+    background: linear-gradient(180deg, rgba(108,117,125,.06), transparent 70%);
+  }
+
+  /* --- รีเซ็ตสไตล์ลิงก์เฉพาะในปฏิทิน (ตัดสีน้ำเงิน/เส้นใต้จาก _reboot.scss) --- */
+  #calendar :where(a, a:visited, .fc a, .fc-daygrid-more-link, .fc-list a){
+    color: inherit !important;
+    text-decoration: none !important;
+  }
+  #calendar a:focus-visible{
+    outline: 0; border-radius:8px; box-shadow: 0 0 0 .2rem rgba(13,110,253,.25);
+  }
+
+  /* หมายเลขวันเป็นชิป และเน้น “วันนี้” */
+  #calendar .fc-daygrid-day-number{ padding:4px 6px; border-radius:8px; font-weight:700; opacity:.9; }
+  #calendar .fc-daygrid-day.fc-day-today .fc-daygrid-day-number{ background: rgba(13,110,253,.12); color:#0d6efd; }
+
+  /* ปุ่ม “+ อีก n รายการ” เป็น pill */
+  #calendar .fc-daygrid-more-link{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:2px 8px !important; border-radius:999px;
+    font-size:.72rem; font-weight:700;
+    background: rgba(13,110,253,.08);
+    border:1px solid rgba(13,110,253,.35);
+    color:#0d6efd !important;
+  }
+  #calendar .fc-daygrid-more-link:hover{ background: rgba(13,110,253,.12); }
+
+  /* ===== อีเวนต์ ultra-compact ===== */
+  #calendar .fc-event{ padding:0 !important; margin:0 !important; border-radius:8px !important; }
+  #calendar .fc-event .fc-event-main{ padding:0 !important; font-size:.72rem; line-height:1.05; }
+  #calendar .fc-event.fc-event-start, #calendar .fc-event.fc-event-end{ margin:0 !important; }
+
+  /* Month (dayGrid) ให้กะทัดรัด */
+  #calendar .fc-daygrid-day-events{ margin: 0 1px; }
+  #calendar .fc-daygrid-event-harness{ margin: 1px 0 !important; }
+  #calendar .fc-daygrid-event{ padding:0 !important; }
+  #calendar .fc-daygrid-dot-event{ padding:0 2px !important; }
+  #calendar .fc-daygrid-dot-event .fc-event-title{ font-size:.7rem; line-height:1.1; }
+  #calendar .fc-daygrid-more-link{ font-size:.68rem; line-height:1; padding:0 3px; }
+
+  /* การ์ดอีเวนต์ที่เราวาดเอง */
+  .evt{
+    --evt-h: 210;
+    display:flex; align-items:center; gap:6px;
+    padding:2px 6px; border-radius:8px; min-height:18px;
+    background: linear-gradient(135deg, hsl(var(--evt-h) 85% 95%), hsl(var(--evt-h) 85% 97%));
+    border:1px solid hsl(var(--evt-h) 50% 70%);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.35), 0 1px 0 rgba(0,0,0,.02);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    transition: box-shadow .15s ease, transform .15s ease;
+  }
+  .evt.mine{ background: linear-gradient(135deg, hsl(var(--evt-h) 70% 94%), hsl(var(--evt-h) 70% 97%)); }
+  .evt.admin{ background: linear-gradient(135deg, hsl(0 80% 96%), hsl(0 80% 98%)); border-color: hsl(0 55% 78%); }
+  .evt .time{ font-variant-numeric: tabular-nums; font-weight:800; font-size:12px; color:hsl(var(--evt-h) 60% 32%); }
+  .evt .room{ display:inline-flex; align-items:center; gap:6px; font-weight:700; font-size:12px; background:#fff; border:1px dashed hsl(var(--evt-h) 35% 68%); padding:1px 6px; border-radius:999px; }
+  #calendar .fc-event:hover .evt{
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.5), 0 0 0 2px hsl(var(--evt-h) 70% 85% / .7), 0 6px 16px rgba(0,0,0,.06);
+    transform: translateY(-1px);
+  }
+
+  /* Week/Day (timeGrid) แน่นขึ้น */
+  #calendar .fc-timegrid-slot{ height:1.8rem; }
+  #calendar .fc-timegrid-event{ margin:0 !important; }
+  #calendar .fc-timegrid-event .fc-event-main{ padding:2px 4px !important; }
+  #calendar .fc-timegrid-event .evt{ min-height:18px; }
+
+  /* List view */
+  #calendar .fc-list .fc-list-event-time,
+  #calendar .fc-list .fc-list-event-title{ font-size:.8rem; }
+  #calendar .fc-list-table td{ padding:4px 8px; }
+
+  /* ===== แผงสถานะวันนี้ (ขวา) — สีตามห้องผ่าน --room-h ===== */
+  .room-card{ --room-h: 210; position:relative;
+    border:1px solid hsl(var(--room-h) 45% 72%/ .9);
+    border-left-width:6px;
+    border-radius:14px; padding:12px 12px 12px 16px;
+    background: linear-gradient(180deg, hsl(var(--room-h) 95% 99% / .9), var(--bs-body-bg));
+    box-shadow: inset 0 0 0 1px hsl(var(--room-h) 95% 95% / .7), 0 6px 20px rgba(0,0,0,.05);
+  }
+  .room-card .title{ display:flex; align-items:center; gap:8px; font-weight:800; margin-bottom:8px; }
+  .room-card .title .dot{
+    width:10px; height:10px; border-radius:50%;
+    background:hsl(var(--room-h) 70% 50%);
+    box-shadow: 0 0 0 4px hsl(var(--room-h) 95% 93%);
+  }
+  .room-card .pill{
+    border:1px solid hsl(var(--room-h) 35% 70%); padding:2px 8px; border-radius:999px; font-size:.8rem;
+    background:hsl(var(--room-h) 100% 98%); color:hsl(var(--room-h) 40% 28%);
+  }
+
+  /* ชิปสถานะสด (กระพริบ) */
+  .live-pill{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:2px 8px; border-radius:999px; font-weight:700; font-size:.75rem; margin-left:8px;
+    border:1px solid;
+  }
+  .live-pill .beacon{ width:10px; height:10px; border-radius:50%; display:inline-block; }
+
+  .live-pill.free{ background: rgba(25,135,84,.08); border-color: rgba(25,135,84,.35); color:#198754; }
+  .live-pill.free .beacon{ background:#198754; animation: pulseFree 1.2s infinite; }
+
+  .live-pill.busy{ background: rgba(220,53,69,.10); border-color: rgba(220,53,69,.45); color:#dc3545; }
+  .live-pill.busy .beacon{ background:#dc3545; animation: pulseBusy 1.2s infinite; }
+
+  @keyframes pulseFree{
+    0%{ box-shadow:0 0 0 0 rgba(25,135,84,.55); }
+    70%{ box-shadow:0 0 0 8px rgba(25,135,84,0); }
+    100%{ box-shadow:0 0 0 0 rgba(25,135,84,0); }
+  }
+  @keyframes pulseBusy{
+    0%{ box-shadow:0 0 0 0 rgba(220,53,69,.6); }
+    70%{ box-shadow:0 0 0 8px rgba(220,53,69,0); }
+    100%{ box-shadow:0 0 0 0 rgba(220,53,69,0); }
+  }
+
+  .section-label{ display:flex; align-items:center; gap:8px; font-size:.8rem; font-weight:700; color:var(--bs-secondary-color); margin:8px 0 6px; }
+  .section-label::after{
+    content:""; flex:1; height:1px; border-radius:999px;
+    background: linear-gradient(90deg, hsl(var(--room-h) 60% 80%), transparent);
+    opacity:.8;
+  }
+
+  .status-item{
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    border:1px solid hsl(var(--room-h) 30% 75% / .9);
+    border-radius:12px; padding:8px 10px;
+    background: hsl(var(--room-h) 100% 98%);
+  }
+  .status-item i{ color:hsl(var(--room-h) 55% 40%); opacity:.95; }
+
+  .status-chip{
+    font-variant-numeric: tabular-nums; font-weight:800; padding:2px 8px; border-radius:10px;
+    background:#fff; border:1px dashed hsl(var(--room-h) 30% 75%);
+  }
+
+  .status-kind-now .status-item{ background: linear-gradient(90deg, hsl(var(--room-h) 95% 95%), #fff); border-color: hsl(var(--room-h) 45% 65%); }
+  .status-kind-prev .status-item{ background: linear-gradient(90deg, hsl(var(--room-h) 20% 97%), #fff); border-color: hsl(var(--room-h) 15% 78% / .7); }
+  .status-kind-next .status-item{ background: linear-gradient(90deg, hsl(var(--room-h) 85% 96%), #fff); border-color: hsl(var(--room-h) 35% 72%); }
+
+  /* หัวการ์ดสถานะ */
+  #statusCard .panel-head{
+    background: linear-gradient(90deg, rgba(13,110,253,.08), rgba(25,135,84,.08));
+    border-radius:12px; padding:8px 12px; margin:-8px -8px 10px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+
+  /* Sticky แผงสถานะบนเดสก์ท็อป */
+  @media (min-width:1200px){ #statusCard{ position: sticky; top: 88px; } }
+
+  /* มือถือ */
+  @media (max-width:575.98px){
+    #calendar .fc-toolbar-title{ font-size:1rem; }
+    #calendar .fc-daygrid-more-link{ font-size:.64rem; }
+    .evt .time, .evt .room{ font-size:.68rem; }
+  }
+  </style>
+</head>
+<body>
+
+  <!-- Navbar -->
+  <nav class="navbar navbar-expand-lg border-bottom fixed-top bg-body">
+    <div class="container-fluid">
+      <button id="menuFab" class="btn btn-link p-0 me-3" aria-label="เมนู" aria-expanded="false">
+        <span class="menu-icon"></span>
+        <span class="menu-icon"></span>
+        <span class="menu-icon"></span>
+      </button>
+      <a class="navbar-brand fw-bold" href="#">Booking Calendar</a>
+
+      <div class="d-flex align-items-center gap-2 ms-auto">
+        <span id="userDisplayName" class="fw-semibold text-primary">ผู้ใช้</span>
+        <!-- ย้ายปุ่มเพิ่มการจองออกจาก Navbar ไปไว้ใน main ด้านล่าง -->
+        <button id="btnLogout" class="btn btn-danger btn-sm">ออกจากระบบ</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Sidebar Overlay -->
+  <div id="menuOverlay" class="menu-overlay" aria-hidden="true">
+    <aside class="menu-drawer shadow-lg">
+      <div class="menu-header d-flex align-items-center justify-content-between mb-4">
+        <h5 class="fw-bold mb-0">เมนูระบบ</h5>
+        <button id="menuClose" class="btn btn-outline-secondary btn-sm">✕</button>
+      </div>
+    <div class="menu-section">Dashboard</div>
+      <ul class="menu-list list-unstyled">
+        <li><a href="dashboard.html" class="menu-link"><span>🏠</span> Dashboard</a></li>
+      </ul>
+
+      <div class="menu-section">ส่วนทั่วไป</div>
+      <ul class="menu-list list-unstyled">
+        <li><a href="bookings.html" class="menu-link"><span>🙍</span> จองห้องประชุม</a></li>
+      </ul>
+
+        <div class="menu-section" data-required-role="admin">ส่วนจัดการข้อมูล</div>
+    <ul class="menu-list list-unstyled" data-required-role="admin">
+    <li class="menu-dropdown">
+        <button class="menu-link d-flex justify-content-between align-items-center w-100">
+        <span>👥 จัดการ</span>
+        <span class="caret">▾</span>
+        </button>
+        <ul class="submenu list-unstyled">
+        <li><a href="Admin.html" class="menu-link">- การจัดการสิทธิ์</a></li>
+        <li><a href="meeting-rooms.html" class="menu-link">- จัดการห้องประชุม</a></li>
+        </ul>
+    </li>
+    <li>
+        <a href="" class="menu-link"><span>⚙️</span> ตั้งค่า</a>
+    </li>
+    </ul>
+
+
+      <div class="menu-section">ส่วนรายงาน</div>
+      <ul class="menu-list list-unstyled">
+        <li><a href="" class="menu-link"><span>📊</span> รายงานภาพรวม</a></li>
+      </ul>
+
+      <hr class="my-4">
+
+      <div class="d-flex align-items-center gap-3">
+        <div class="avatar-circle">U</div>
+        <div>
+          <div class="fw-semibold" id="menuUserName">—</div>
+          <div class="text-secondary small">กำลังใช้งานอยู่</div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Main Content -->
+  <main class="container-fluid px-3 px-md-4">
+    <!-- Action bar: ปุ่มเพิ่มการจองอยู่บนสุด แยกจากส่วนอื่น -->
+    <div class="action-bar">
+      <div class="d-flex gap-2 align-items-center">
+        <button id="btnQuickAdd" class="btn btn-primary btn-sm">
+          <i class="bi bi-plus-lg"></i> เพิ่มการจอง
+        </button>
+      </div>
+    </div>
+
+    <div class="row g-3">
+      <!-- Calendar -->
+      <div class="col-12 col-xl-8">
+        <div class="card p-3">
+          <div id="calendar"></div>
+        </div>
+      </div>
+
+      <!-- สถานะห้องประชุม (วันนี้) -->
+      <div class="col-12 col-xl-4">
+        <div id="statusCard" class="card p-3">
+          <div class="panel-head d-flex align-items-center justify-content-between">
+            <div class="d-flex align-items-center gap-2">
+              <i class="bi bi-activity"></i>
+              <strong>สถานะห้องประชุม (วันนี้)</strong>
+            </div>
+            <span class="badge text-bg-light" id="statusNowTime">—</span>
+          </div>
+
+          <!-- JS จะใส่รายการให้ในนี้ -->
+          <div id="roomStatusList" class="d-flex flex-column gap-2"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal จอง/แก้ไข -->
+  <div class="modal fade" id="bookingModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+      <form id="bookingForm" class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title" id="modalTitle">จองห้องประชุม</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="bookingId">
+            <div class="mt-2">
+            <label class="form-label">ชื่อผู้จอง</label>
+            <input type="text" id="bookerName" class="form-control" readonly>
+          </div>
+          <div class="mb-2" id="roomSelectWrap">
+            <label class="form-label">เลือกห้อง</label>
+            <select id="roomSelect" class="form-select"></select>
+          </div>
+          <div class="mb-2 d-none" id="roomNameWrap">
+            <label class="form-label">ห้อง</label>
+            <input type="text" id="roomName" class="form-control" readonly>
+            <input type="hidden" id="roomId">
+          </div>
+
+          <div class="row g-2">
+            <div class="col-6">
+              <label class="form-label">วันที่</label>
+              <input type="date" id="bookingDate" class="form-control" required>
+            </div>
+            <div class="col-3">
+              <label class="form-label">เริ่ม</label>
+              <select id="startTime" class="form-select" required></select>
+            </div>
+            <div class="col-3">
+              <label class="form-label">ถึง</label>
+              <select id="endTime" class="form-select" required></select>
+            </div>
+          </div>
+
+          <div class="mt-2">
+            <label class="form-label">เรื่อง</label>
+            <input type="text" id="title" class="form-control" placeholder="หัวข้อการประชุม" required>
+          </div>
+
+          <div class="mt-2">
+            <label class="form-label">เบอร์ติดต่อ</label>
+            <input type="tel" id="contact" class="form-control" placeholder="0x-xxx-xxxx" required>
+          </div>
+
+       
+
+          <div class="form-text mt-2">
+            * ระบบจะแสดงเฉพาะช่วงเวลาที่ว่างจริง และป้องกันการจองซ้อนอัตโนมัติ
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="me-auto">
+            <button type="button" id="btnDelete" class="btn btn-outline-danger d-none">ลบการจอง</button>
+          </div>
+          <button type="button" class="btn btn-soft" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Alert Modal -->
+  <div class="modal fade" id="alertModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-sm modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header py-2">
+          <h6 class="modal-title">แจ้งเตือน</h6>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="ปิด"></button>
+        </div>
+        <div class="modal-body" id="alertText">ข้อความ</div>
+        <div class="modal-footer py-2">
+          <button type="button" class="btn btn-primary btn-sm" data-bs-dismiss="modal">ตกลง</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080">
+    <div id="toast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastBody">ดำเนินการสำเร็จ</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Firebase + App -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+    import {
+      getFirestore, collection, addDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy,
+      serverTimestamp, doc, getDoc, where, getDocs
+    } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+    // ---- Firebase ----
+    const firebaseConfig = {
+      apiKey: "AIzaSyB_G4hfiis6DjmPiwsh5-hnNKVztMfd_T4",
+      authDomain: "booking-sw.firebaseapp.com",
+      projectId: "booking-sw",
+      storageBucket: "booking-sw.firebasestorage.app",
+      messagingSenderId: "134246403096",
+      appId: "1:134246403096:web:900da94277e8b70c4cc76d"
+    };
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db   = getFirestore(app);
+
+    // ---- UI helpers ----
+    const $ = (s)=>document.querySelector(s);
+    let toast;
+    document.addEventListener('DOMContentLoaded', ()=> {
+      // eslint-disable-next-line no-undef
+      toast = new bootstrap.Toast($('#toast'), { delay: 1800 });
+    });
+    const showToast = (m)=>{ $('#toastBody').textContent=m; toast.show(); };
+    const showPopup = (m)=>{ $('#alertText').textContent = m; /* eslint-disable-next-line no-undef */ new bootstrap.Modal($('#alertModal')).show(); };
+
+    // ---- Role / User ----
+    const DEFAULT_ROLE = 'viewer';
+    let currentUser = null;  // {user, role, name}
+    async function getUserData(uid) {
+      const snap = await getDoc(doc(db, 'users', uid));
+      if (!snap.exists()) return { name: 'ผู้ใช้', role: DEFAULT_ROLE };
+      const data = snap.data() || {};
+      return { name: data.name || 'ผู้ใช้', role: (data.role || DEFAULT_ROLE).toLowerCase() };
+    }
+    function applyUserDisplay(name) {
+      $('#userDisplayName').textContent = name || 'ผู้ใช้';
+      $('#menuUserName').textContent = name || 'ผู้ใช้';
+      const av = document.querySelector('.avatar-circle');
+      if (av) av.textContent = (name && name[0]) ? name[0].toUpperCase() : 'U';
+    }
+    function applyRoleToUI(role){
+      document.documentElement.setAttribute('data-role', role);
+      document.querySelectorAll('[data-required-role]').forEach(el=>{
+        const allowed = (el.getAttribute('data-required-role')||'').split(',').map(s=>s.trim().toLowerCase());
+        el.style.display = allowed.includes(role) ? '' : 'none';
+      });
+    }
+
+    // ---- Date & Time utils (รวมศูนย์และประกาศก่อนใช้งาน) ----
+    const fmt2 = (n)=> String(n).padStart(2,'0');
+    const toYmd = (d)=> [d.getFullYear(), fmt2(d.getMonth()+1), fmt2(d.getDate())].join('-');
+    const ymd   = (date)=> `${date.getFullYear()}-${fmt2(date.getMonth()+1)}-${fmt2(date.getDate())}`;
+
+    const toMin = (s)=>{ const [h,m]=(s||'0:0').split(':').map(n=>+n||0); return h*60+m; };
+    const minToHH = (min)=> `${fmt2(Math.floor(min/60))}:${fmt2(min%60)}`;
+    const roundUpToNext30 = (min)=> Math.ceil(min/30)*30;  // 08:10 -> 08:30, 08:31 -> 09:00
+    const nowHM = ()=> { const d=new Date(); return `${fmt2(d.getHours())}:${fmt2(d.getMinutes())}`; };
+    const hm2m = toMin;
+
+    // ---- State ----
+    let rooms = [];
+    const roomsRef = collection(db, 'meeting_rooms');
+    const meetingsRef = collection(db, 'meetings');
+
+    // ---- Auth ----
+    onAuthStateChanged(auth, async (user)=>{
+      if(!user){ window.location.href='index.html'; return; }
+      const {name, role} = await getUserData(user.uid);
+      currentUser = { user, role, name };
+      applyUserDisplay(name);
+      applyRoleToUI(role);
+      init();
+    });
+
+    $('#btnLogout')?.addEventListener('click', async ()=>{
+      await signOut(auth); window.location.href='index.html';
+    });
+
+    // ===== สี (hue) จาก id ห้อง =====
+    function hueFromString(s){
+      if (!s) return 210;
+      let h=0; for (let i=0;i<s.length;i++){ h = (h*31 + s.charCodeAt(i)) % 360; }
+      return Math.round((h/360)*330);
+    }
+
+    // ================= FullCalendar =================
+    let calendar; let unsubCal = null;
+
+    function toEvents(docs) {
+      docs.sort((a,b)=> (a.date||'').localeCompare(b.date||'') || (a.start||'').localeCompare(b.start||''));
+      return docs.map(m => {
+        const start = `${m.date}T${m.start}:00`;
+        const end   = `${m.date}T${m.end}:00`;
+        const mine = currentUser && currentUser.user.uid === m.userId;
+        const isAdminView = currentUser && currentUser.role === 'admin';
+        return {
+          id: m.id,
+          start,
+          end,
+          title: '', // ไม่แสดงหัวข้อ
+          extendedProps: { meeting: m, mine, isAdminView, roomName: m.roomName || '' }
+        };
+      });
+    }
+
+    function subscribeCalendarRange(info, successCallback, failureCallback) {
+      const startStr = ymd(info.start);
+      const endStr   = ymd(new Date(info.end.getTime() - 24*60*60*1000)); // exclusive
+
+      if (unsubCal) { unsubCal(); unsubCal = null; }
+
+      const qRef = query(
+        meetingsRef,
+        where('date','>=', startStr),
+        where('date','<=', endStr),
+        orderBy('date')
+      );
+
+      unsubCal = onSnapshot(qRef, snap => {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        successCallback(toEvents(docs));
+      }, err => {
+        console.error('Calendar range error:', err);
+        if (failureCallback) failureCallback(err);
+        successCallback([]);
+      });
+    }
+
+    function renderEventContent(arg) {
+      const m = arg.event.extendedProps.meeting;
+      const mine = arg.event.extendedProps.mine;
+      const isAdminView = arg.event.extendedProps.isAdminView;
+      const roomName = arg.event.extendedProps.roomName;
+      const hue = hueFromString(m.roomId || roomName || '');
+
+      // Compact: แสดงเฉพาะ "เวลา + ห้อง"
+      const root = document.createElement('div');
+      root.className = 'evt' + (mine ? ' mine' : (isAdminView ? ' admin' : ''));
+      root.style.setProperty('--evt-h', hue);
+
+      const t = document.createElement('span');
+      t.className = 'time';
+      t.textContent = `${m.start}–${m.end}`;
+
+      const r = document.createElement('span');
+      r.className = 'room';
+      r.innerHTML = `${roomName || 'ห้อง'}`;
+
+      root.appendChild(t);
+      root.appendChild(r);
+
+      return { domNodes: [root] };
+    }
+
+    function initCalendar() {
+      const calendarEl = document.getElementById('calendar');
+      if (!calendarEl) return;
+
+      calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'dayGridMonth',
+        height: 'auto',
+        locale: 'th',
+        firstDay: 0,
+        selectable: true,
+        nowIndicator: true,
+        allDaySlot: false,
+        slotMinTime: '08:00:00',
+        slotMaxTime: '19:00:00',       // ✅ จำกัดถึง 18:00
+        expandRows: true,
+        dayMaxEventRows: true,
+        eventOverlap: false,
+        timeZone: 'local',
+        displayEventTime: false,       // เราแสดงเวลาเอง
+
+        headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' },
+
+        events: (info, success, failure) => subscribeCalendarRange(info, success, failure),
+        eventContent: renderEventContent,
+
+        dateClick: (info) => {
+          // ✅ ถ้าวันนี้: เลือกเป็นครึ่งชั่วโมงถัดไป, ไม่งั้นตั้ง 08:00-09:00
+          const todayStr = toYmd(new Date());
+          const clicked  = ymd(info.date);
+          let sMin, eMin;
+          if (clicked === todayStr) {
+            const nowMin = toMin(nowHM());
+            sMin = Math.min(Math.max(8*60, roundUpToNext30(nowMin)), 19*60 - 30);
+            eMin = (sMin + 60 <= 19*60) ? sMin + 60 : sMin + 30;
+          } else {
+            sMin = 8*60; eMin = 9*60;
+          }
+          const preStart = minToHH(sMin);
+          const preEnd   = minToHH(eMin);
+
+          openBookingModal({ mode:'create-quick', start: preStart, end: preEnd });
+          const dateInput = document.getElementById('bookingDate');
+          if (dateInput) dateInput.value = ymd(info.date);
+        },
+
+        select: (sel) => {
+          // ✅ ปัดช่วง selection เป็น step 30 นาที และครอบไว้ใน 08:00–18:00
+          const s = new Date(sel.start);
+          const e = new Date(sel.end);
+          const sMinRaw = s.getHours()*60 + s.getMinutes();
+          const eMinRaw = e.getHours()*60 + e.getMinutes();
+          const sMin = Math.min(Math.max(8*60, roundUpToNext30(sMinRaw)), 19*60 - 30);
+          let eMin = Math.max(sMin + 30, roundUpToNext30(eMinRaw));
+          eMin = Math.min(eMin, 19*60);
+
+          const preStart = minToHH(sMin);
+          const preEnd   = minToHH(eMin);
+
+          openBookingModal({ mode:'create-quick', start: preStart, end: preEnd });
+          const dateInput = document.getElementById('bookingDate');
+          if (dateInput) dateInput.value = ymd(s);
+          calendar.unselect();
+        },
+
+        eventClick: (arg) => {
+          const m = arg.event.extendedProps && arg.event.extendedProps.meeting;
+          if (!m) return;
+          const isOwner = currentUser && currentUser.user.uid === m.userId;
+          const isAdmin = currentUser && currentUser.role === 'admin';
+          if (!isOwner && !isAdmin) return;   // ✅ กันกดแก้ไขถ้าไม่ใช่เจ้าของ/แอดมิน
+          openBookingModal({ mode:'edit', meeting: m, roomId: m.roomId, roomName: m.roomName, date: m.date });
+        }
+      });
+
+      calendar.render();
+    }
+
+    // ================== Booking Modal Logic & สิทธิ์ ==================
+    let editingMeeting = null; // เก็บรายการที่กำลังแก้ไขเพื่อเช็คสิทธิ์
+
+    const modalEl = document.getElementById('bookingModal');
+    // eslint-disable-next-line no-undef
+    const modal = new bootstrap.Modal(modalEl);
+    const bookingForm = document.getElementById('bookingForm');
+    const startSel = document.getElementById('startTime');
+    const endSel   = document.getElementById('endTime');
+
+    function isOverlapping(aStart, aEnd, bStart, bEnd){
+      const toF = (s)=> { const [h,m]=s.split(':'); return (+h) + (+m)/60; }
+      return (toF(aStart) < toF(bEnd)) && (toF(aEnd) > toF(bStart));
+    }
+
+    async function hasOverlap(dateStr, roomId, start, end, excludeId=null) {
+      const qDay = query(meetingsRef, where('date', '==', dateStr));
+      const snap = await getDocs(qDay);
+      const arr = snap.docs.map(d=>({id:d.id, ...d.data()}))
+                           .filter(x => x.roomId === roomId && (!excludeId || x.id !== excludeId));
+      return arr.some(m => isOverlapping(start, end, m.start, m.end));
+    }
+
+    function fetchDayMeetings(dateStr, roomId) {
+      return new Promise((resolve)=>{
+        const qDay = query(meetingsRef, where('date', '==', dateStr));
+        const unsub = onSnapshot(qDay, snap=>{
+          const all = snap.docs.map(d=>({id:d.id, ...d.data()}));
+          const filtered = all.filter(x => x.roomId === roomId).sort((a,b)=> (a.start||'').localeCompare(b.start||''));
+          unsub(); resolve(filtered);
+        }, err=>{ console.error(err); try{unsub();}catch{} resolve([]); });
+      });
+    }
+
+    function fillRoomDropdown(selectEl){
+      selectEl.innerHTML = '';
+      rooms.forEach(r=>{
+        const opt = document.createElement('option');
+        opt.value = r.id; opt.textContent = r.name || '(ไม่มีชื่อ)';
+        selectEl.appendChild(opt);
+      });
+    }
+
+    // ✅ ครึ่งชั่วโมง 08:00–18:00 + filter เฉพาะ "ตั้งแต่ตอนนี้" เมื่อเป็นวันนี้
+    async function fillTimeSelects(roomId, dateStr, preStart=null, preEnd=null){
+      startSel.innerHTML = ''; endSel.innerHTML = '';
+      const submitBtn = bookingForm.querySelector('button[type="submit"]');
+      if (!roomId || !dateStr) { if (submitBtn) submitBtn.disabled = true; return; }
+
+      const DAY_START = 8*60;   // 08:00
+      const DAY_END   = 19*60;  // 19:00 (เวลาสิ้นสุดสูงสุด)
+      const todayStr  = toYmd(new Date());
+      const taken = await fetchDayMeetings(dateStr, roomId);
+
+      // ==== เตรียม start slots (ทุก 30 นาที) ====
+      let startMin = DAY_START;
+      if (dateStr === todayStr && !preStart) {
+        const roundedNow = roundUpToNext30(toMin(nowHM()));
+        startMin = Math.max(DAY_START, Math.min(roundedNow, DAY_END - 30)); // ไม่เกิน 16:30
+      }
+
+      let startCandidates = [];
+      for (let m = DAY_START; m <= DAY_END - 30; m += 30) startCandidates.push(minToHH(m));
+      if (dateStr === todayStr && !preStart) {
+        startCandidates = startCandidates.filter(t => toMin(t) >= startMin);
+      }
+
+      if (startCandidates.length === 0 && !preStart) {
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = '— ไม่มีช่วงเวลาที่เหลือในวันนี้ —';
+        opt.disabled = true; opt.selected = true;
+        startSel.appendChild(opt);
+        endSel.innerHTML = '';
+        if (submitBtn) submitBtn.disabled = true;
+        return;
+      }
+
+      if (preStart && !startCandidates.includes(preStart)) startCandidates.unshift(preStart);
+
+      for (const s of startCandidates) {
+        const opt = document.createElement('option');
+        opt.value = s; opt.textContent = s;
+        startSel.appendChild(opt);
+      }
+      if (preStart) startSel.value = preStart;
+      if (!startSel.value) startSel.value = startCandidates[0] || '';
+
+      // ==== end slots (ทุก 30 นาที, > start และ ≤ 19:00) ====
+      function rebuildEnds(){
+        endSel.innerHTML = '';
+        const sVal = startSel.value;
+        if (!sVal) { if (submitBtn) submitBtn.disabled = true; return; }
+        const sMin = toMin(sVal);
+
+        const endCandidates = [];
+        for (let m = sMin + 30; m <= DAY_END; m += 30) endCandidates.push(minToHH(m));
+
+        const freeEnds = endCandidates.filter(candidate => {
+          if (preStart && preEnd && sVal===preStart && candidate===preEnd) return true; // อนุญาตคู่เดิม
+          return !taken.some(m => isOverlapping(sVal, candidate, m.start, m.end));
+        });
+
+        if (preEnd && !freeEnds.includes(preEnd)) freeEnds.unshift(preEnd);
+
+        for (const e of freeEnds) {
+          const opt = document.createElement('option');
+          opt.value = e; opt.textContent = e;
+          endSel.appendChild(opt);
+        }
+
+        if (preEnd) endSel.value = preEnd;
+        if (!endSel.value && freeEnds.length) endSel.value = freeEnds[0] || '';
+        if (submitBtn) submitBtn.disabled = endSel.options.length === 0;
+      }
+
+      startSel.onchange = rebuildEnds;
+      rebuildEnds();
+    }
+
+    function openBookingModal({mode, roomId=null, roomName=null, start=null, end=null, date=null, meeting=null} = {}){
+      $('#bookingId').value = meeting ? meeting.id : '';
+      editingMeeting = null; // reset
+
+      const roomSelectWrap = $('#roomSelectWrap');
+      const roomNameWrap   = $('#roomNameWrap');
+      const roomSelect     = $('#roomSelect');
+
+      // ชื่อผู้จอง = ผู้ล็อกอิน (readonly)
+      const bookerEl = $('#bookerName');
+      bookerEl.value = currentUser?.name || 'ผู้ใช้';
+
+      if (mode === 'create-quick'){
+        roomNameWrap.classList.add('d-none');
+        roomSelectWrap.classList.remove('d-none');
+        fillRoomDropdown(roomSelect);
+
+        const dateInput = $('#bookingDate');
+        if (!dateInput.value) dateInput.value = toYmd(new Date());
+
+        // ✅ รองรับ preStart/preEnd ที่ส่งมา
+        fillTimeSelects(roomSelect.value, dateInput.value, start, end);
+        roomSelect.onchange = ()=> fillTimeSelects(roomSelect.value, dateInput.value, start, end);
+        dateInput.onchange  = ()=> fillTimeSelects(roomSelect.value, dateInput.value, start, end);
+
+        $('#title').value = '';
+        $('#contact').value = '';
+        $('#modalTitle').textContent = 'จองห้องประชุม';
+        const btnDel = $('#btnDelete'); btnDel.classList.add('d-none'); btnDel.onclick = null;
+
+        modal.show();
+        return;
+      }
+
+      if (mode === 'create'){
+        roomSelectWrap.classList.add('d-none');
+        roomNameWrap.classList.remove('d-none');
+        $('#roomId').value = roomId || '';
+        $('#roomName').value = roomName || '';
+        $('#bookingDate').value = date || toYmd(new Date());
+        $('#title').value = '';
+        $('#contact').value = '';
+        $('#modalTitle').textContent = 'จองห้องประชุม';
+        const btnDel = $('#btnDelete'); btnDel.classList.add('d-none'); btnDel.onclick = null;
+
+        fillTimeSelects(roomId, $('#bookingDate').value, start, end);
+        $('#bookingDate').onchange = ()=> fillTimeSelects(roomId, $('#bookingDate').value);
+        modal.show();
+        return;
+      }
+
+      if (mode === 'edit'){
+        const isOwner = currentUser && meeting && currentUser.user.uid === meeting.userId;
+        const isAdmin = currentUser && currentUser.role === 'admin';
+        if (!isOwner && !isAdmin) { showPopup('คุณไม่มีสิทธิ์แก้ไขรายการนี้'); return; } // ✅ กันเปิดโมดอล
+
+        editingMeeting = meeting; // เก็บไว้เช็คตอนบันทึก/ลบ
+
+        roomSelectWrap.classList.add('d-none');
+        roomNameWrap.classList.remove('d-none');
+        $('#roomId').value   = meeting.roomId;
+        $('#roomName').value = meeting.roomName;
+        $('#bookingDate').value = meeting.date;
+        $('#title').value = meeting.title || '';
+        $('#contact').value = meeting.contact || '';
+        bookerEl.value = currentUser?.name || meeting.bookerName || meeting.userName || '';
+
+        const btnDel = $('#btnDelete');
+        btnDel.classList.remove('d-none');
+        btnDel.onclick = async ()=>{
+          const canDelete = (currentUser.role==='admin' || currentUser.user.uid===meeting.userId);
+          if (!canDelete) { showPopup('คุณไม่มีสิทธิ์ลบรายการนี้'); return; }
+          try{ await deleteDoc(doc(db, 'meetings', meeting.id)); showToast('ลบการจองแล้ว'); modal.hide(); }
+          catch(e){ console.error(e); showPopup('ลบไม่สำเร็จ'); }
+        };
+
+        $('#modalTitle').textContent = 'แก้ไขการจอง';
+        fillTimeSelects(meeting.roomId, meeting.date, meeting.start, meeting.end);
+        $('#bookingDate').onchange = ()=> fillTimeSelects(meeting.roomId, $('#bookingDate').value, meeting.start, meeting.end);
+        modal.show();
+        return;
+      }
+    }
+
+    bookingForm.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const id = $('#bookingId').value;
+
+      // room
+      let roomId = $('#roomId').value;
+      let roomName = $('#roomName').value;
+      const roomSelectWrap = $('#roomSelectWrap');
+      if (!roomId && !roomName && !roomSelectWrap.classList.contains('d-none')) {
+        const sel = $('#roomSelect');
+        roomId = sel.value;
+        const roomObj = rooms.find(r=>r.id===roomId);
+        roomName = roomObj ? (roomObj.name||'') : '';
+      }
+
+      const dateStr = $('#bookingDate').value;
+      const start   = $('#startTime').value;
+      const end     = $('#endTime').value;
+      const title   = $('#title').value.trim();
+      const contact = $('#contact').value.trim();
+      const booker  = $('#bookerName').value.trim();
+
+      if (!roomId || !dateStr || !start || !end || !title || !contact) {
+        showPopup('กรุณากรอกข้อมูลให้ครบ'); return;
+      }
+
+      // กันจองคาบเกี่ยว
+      try{
+        const overlap = await hasOverlap(dateStr, roomId, start, end, id || null);
+        if (overlap) { showPopup('ไม่สามารถบันทึกได้: ช่วงเวลานี้ถูกจองแล้วสำหรับห้องนี้'); return; }
+      }catch(err){
+        console.error('overlap-check error', err);
+        showPopup('ไม่สามารถตรวจสอบการจองซ้ำได้ กรุณาลองใหม่'); return;
+      }
+
+      // ✅ เช็คสิทธิ์ตอนบันทึก (แก้ไขได้เฉพาะผู้จองหรือแอดมิน)
+      if (id && editingMeeting) {
+        const canEdit = (currentUser.role==='admin' || currentUser.user.uid===editingMeeting.userId);
+        if (!canEdit) { showPopup('คุณไม่มีสิทธิ์แก้ไขรายการนี้'); return; }
+      }
+
+      try{
+        const payload = {
+          roomId, roomName, date: dateStr, start, end, title, contact,
+          userId: currentUser.user.uid,
+          userName: currentUser.name,
+          bookerName: booker || currentUser.name,
+          updatedAt: serverTimestamp()
+        };
+
+        if (id){
+          await updateDoc(doc(db,'meetings', id), payload);
+          showToast('อัปเดตการจองแล้ว');
+        } else {
+          await addDoc(meetingsRef, { ...payload, createdAt: serverTimestamp() });
+          showToast('จองสำเร็จ');
+        }
+        modal.hide();
+      }catch(err){
+        console.error(err);
+        showPopup('บันทึกไม่สำเร็จ');
+      }
+    });
+
+    // ================= สถานะห้องประชุมวันนี้ =================
+    let unsubToday = null, todayDocs = [];
+
+    function renderStatusPanelByRoom() {
+      const cont = document.getElementById('roomStatusList');
+      const nowEl = document.getElementById('statusNowTime');
+      if (!cont) return;
+      cont.innerHTML = '';
+      if (nowEl) nowEl.textContent = `${nowHM()} น.`;
+
+      // map meta ห้อง
+      const roomMap = Object.fromEntries((rooms || []).map(r => [r.id, r]));
+
+      const nowM = hm2m(nowHM());
+      const grouped = {};
+
+      // เตรียมห้องจาก master
+      rooms.forEach(r => {
+        grouped[r.id] = {
+          name: r.name || '(ไม่มีชื่อ)',
+          floor: r.floor ?? r.level ?? null,
+          capacity: r.capacity ?? r.cap ?? null,
+          prev: [], now: [], next: []
+        };
+      });
+
+      // ยัดอีเวนต์วันนี้
+      todayDocs.forEach(m => {
+        const rid = m.roomId || `misc:${m.roomName || 'ห้อง'}`;
+        if (!grouped[rid]) {
+          const meta = roomMap[rid] || {};
+          grouped[rid] = {
+            name: m.roomName || meta.name || '(ไม่มีชื่อ)',
+            floor: meta.floor ?? meta.level ?? null,
+            capacity: meta.capacity ?? meta.cap ?? null,
+            prev: [], now: [], next: []
+          };
+        }
+        const s = hm2m(m.start), e = hm2m(m.end);
+        if (e <= nowM) grouped[rid].prev.push(m);
+        else if (s <= nowM && nowM < e) grouped[rid].now.push(m);
+        else grouped[rid].next.push(m);
+      });
+
+      // วาดการ์ดห้อง
+      Object.entries(grouped)
+        .sort((a,b)=> a[1].name.localeCompare(b[1].name))
+        .forEach(([rid, grp])=>{
+          const hue = hueFromString(rid);
+          const card = document.createElement('div');
+          card.className = 'room-card';
+          card.style.setProperty('--room-h', hue);
+
+          const floorTxt = grp.floor ? `ชั้น ${grp.floor}` : null;
+          const capVal = grp.capacity ?? null;
+          const capTxt = (capVal || capVal === 0) ? `${capVal} คน` : null;
+          const metaTxt = [floorTxt, capTxt].filter(Boolean).join(' • ');
+          const metaHtml = metaTxt ? ` <small class="text-secondary">(${metaTxt})</small>` : '';
+
+          const isBusy = (grp.now && grp.now.length > 0);
+
+          const head = document.createElement('div');
+          head.className = 'title';
+          head.innerHTML = `
+            <span class="dot"></span>
+            <span>${grp.name}${metaHtml}</span>
+            <span class="pill"><i class="bi bi-calendar3"></i> วันนี้</span>
+            <span class="live-pill ${isBusy ? 'busy' : 'free'}">
+              <span class="beacon"></span>${isBusy ? 'ไม่ว่าง' : 'ว่างตอนนี้'}
+            </span>
+          `;
+          card.appendChild(head);
+
+          const mk = (lbl, arr, kind)=>{
+            const sec=document.createElement('div'); sec.className=`status-kind-${kind}`;
+            const lb=document.createElement('div'); lb.className='section-label';
+            lb.innerHTML = (kind==='prev' ? '<i class="bi bi-clock-history"></i>' :
+                            kind==='now'  ? '<i class="bi bi-broadcast-pin"></i>' :
+                                            '<i class="bi bi-calendar-event"></i>') + ' ' + lbl;
+            sec.appendChild(lb);
+            const list=document.createElement('div');
+            arr.sort((x,y)=> (x.start||'').localeCompare(y.start||''));
+            if (!arr.length){
+              const none=document.createElement('div');
+              none.className='text-secondary small'; none.textContent='—';
+              list.appendChild(none);
+            } else {
+              arr.forEach(m=>{
+                const item=document.createElement('div'); item.className='status-item';
+                const left=document.createElement('div'); left.className='d-flex align-items-center gap-2';
+                left.innerHTML = '<i class="bi bi-dot"></i>';
+                const chip=document.createElement('span'); chip.className='status-chip'; chip.textContent=`${m.start}–${m.end}`;
+                left.appendChild(chip);
+                const right=document.createElement('div'); right.className='small text-secondary text-truncate';
+                right.textContent = (m.bookerName || m.userName || '').trim();
+                item.appendChild(left); item.appendChild(right);
+                list.appendChild(item);
+              });
+            }
+            sec.appendChild(list); return sec;
+          };
+
+            // เลือก 1 รายการ: "ก่อนหน้านี้" = อันที่เพิ่งจบ (end ใกล้ตอนนี้ที่สุด)
+            //                 "หลังจากนี้"  = อันที่ใกล้จะเริ่ม (start เร็วที่สุดที่ยังไม่ถึง)
+            const prevSorted = [...grp.prev].sort((a,b)=> hm2m(a.end)   - hm2m(b.end));
+            const nextSorted = [...grp.next].sort((a,b)=> hm2m(a.start) - hm2m(b.start));
+            const prevOne = prevSorted.length ? [prevSorted[prevSorted.length-1]] : [];
+            const nextOne = nextSorted.length ? [nextSorted[0]] : [];
+
+            card.appendChild(mk('ก่อนหน้านี้', prevOne, 'prev'));
+            card.appendChild(mk('ขณะนี้', grp.now, 'now'));
+            card.appendChild(mk('หลังจากนี้', nextOne, 'next'));
+
+
+          cont.appendChild(card);
+        });
+    }
+
+    function subscribeTodayStatus(){
+      const todayStr = toYmd(new Date());
+      if (unsubToday) { unsubToday(); unsubToday = null; }
+      const qToday = query(meetingsRef, where('date','==', todayStr));
+      unsubToday = onSnapshot(qToday, snap=>{
+        todayDocs = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        renderStatusPanelByRoom();
+      }, _err=>{ todayDocs=[]; renderStatusPanelByRoom(); });
+      setInterval(renderStatusPanelByRoom, 30000);
+    }
+
+    // ---- Init ----
+    function init(){
+      document.getElementById('btnQuickAdd').addEventListener('click', ()=>{
+        // เปิด modal โดยตั้งเวลาครึ่งชั่วโมงถัดไป (วันนี้) หรือ 08:00–09:00 (วันอื่น)
+        const today = new Date();
+        const todayStr = toYmd(today);
+        const clickedStr = toYmd(today);
+        let sMin, eMin;
+        const nowMin = toMin(nowHM());
+        sMin = Math.min(Math.max(8*60, roundUpToNext30(nowMin)), 19*60 - 30);
+        eMin = (sMin + 60 <= 19*60) ? sMin + 60 : sMin + 30;
+
+        openBookingModal({ mode:'create-quick', start: minToHH(sMin), end: minToHH(eMin) });
+        const dateInput = document.getElementById('bookingDate');
+        if (dateInput) dateInput.value = todayStr;
+      });
+
+      if (!calendar) initCalendar();
+
+      // rooms subscribe
+      onSnapshot(query(roomsRef, orderBy('name')), snap=>{
+        rooms = snap.docs.map(d=>({id:d.id, ...d.data()})).filter(r=> r.isActive !== false);
+        renderStatusPanelByRoom();
+      });
+
+      // today status
+      subscribeTodayStatus();
+    }
+  </script>
+
+  <!-- Bootstrap JS -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

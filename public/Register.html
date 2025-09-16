@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Register - Booking System</title>
+<style>
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.register-container {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  width: 100%;
+  max-width: 400px;
+  animation: slideUp 0.6s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.register-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.register-header h2 {
+  color: #333;
+  font-size: 2rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.register-header p {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.input-group {
+  position: relative;
+  margin-bottom: 25px;
+}
+
+.input-group input {
+  width: 100%;
+  padding: 15px 20px;
+  border: 2px solid #e1e5e9;
+  border-radius: 12px;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+  background: #f8f9fa;
+  padding-right: 50px;
+}
+
+.input-group input:focus {
+  outline: none;
+  border-color: #667eea;
+  background: white;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.15);
+}
+
+.input-group input::placeholder {
+  color: #adb5bd;
+  transition: all 0.3s ease;
+}
+
+.input-group input:focus::placeholder {
+  opacity: 0.7;
+}
+
+.input-group.valid input {
+  border-color: #28a745;
+}
+
+.input-group.invalid input {
+  border-color: #dc3545;
+}
+
+.register-btn {
+  width: 100%;
+  padding: 15px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.register-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
+}
+
+.register-btn:active {
+  transform: translateY(0);
+}
+
+.register-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.register-btn:hover::before {
+  left: 100%;
+}
+
+.error {
+  color: #e74c3c;
+  background: #ffeaea;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #e74c3c;
+  font-size: 0.9rem;
+  display: none;
+}
+
+.error.show {
+  display: block;
+  animation: shake 0.5s ease-in-out;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+.login-link {
+  text-align: center;
+  margin-top: 25px;
+  padding-top: 25px;
+  border-top: 1px solid #e1e5e9;
+}
+
+.login-link p {
+  color: #666;
+  font-size: 0.95rem;
+}
+
+.login-link a {
+  color: #667eea;
+  text-decoration: none;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.login-link a:hover {
+  color: #764ba2;
+  text-decoration: underline;
+}
+
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.loading .register-btn {
+  background: #ccc;
+  cursor: not-allowed;
+}
+
+.success-message {
+  color: #27ae60;
+  background: #eafaf1;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #27ae60;
+  font-size: 0.9rem;
+  display: none;
+  text-align: center;
+}
+
+.success-message.show {
+  display: block;
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.icon {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #adb5bd;
+  transition: all 0.3s ease;
+}
+
+.input-group:focus-within .icon {
+  color: #667eea;
+}
+
+.input-group.valid .icon {
+  color: #28a745;
+}
+
+.input-group.invalid .icon {
+  color: #dc3545;
+}
+
+.password-strength {
+  margin-top: 8px;
+  font-size: 0.8rem;
+}
+
+.strength-bar {
+  height: 4px;
+  background: #e1e5e9;
+  border-radius: 2px;
+  margin: 5px 0;
+  overflow: hidden;
+}
+
+.strength-fill {
+  height: 100%;
+  transition: all 0.3s ease;
+  border-radius: 2px;
+}
+
+.strength-weak { background: #dc3545; width: 25%; }
+.strength-medium { background: #ffc107; width: 50%; }
+.strength-good { background: #fd7e14; width: 75%; }
+.strength-strong { background: #28a745; width: 100%; }
+
+.requirements {
+  margin-top: 10px;
+  font-size: 0.8rem;
+  color: #666;
+}
+
+.requirement {
+  margin: 2px 0;
+  transition: all 0.3s ease;
+}
+
+.requirement.met {
+  color: #28a745;
+}
+
+.requirement::before {
+  content: '●';
+  margin-right: 5px;
+  color: #dc3545;
+  transition: all 0.3s ease;
+}
+
+.requirement.met::before {
+  content: '✓';
+  color: #28a745;
+}
+
+@media (max-width: 480px) {
+  .register-container {
+    padding: 30px 20px;
+    margin: 10px;
+  }
+  
+  .register-header h2 {
+    font-size: 1.75rem;
+  }
+}
+</style>
+</head>
+<body>
+<div class="register-container">
+  <div class="register-header">
+    <h2>Create Account</h2>
+    <p>Join us and start booking today</p>
+  </div>
+  
+  <div class="input-group" id="name-group">
+    <input type="text" id="reg-name" placeholder="Enter your full name">
+    <span class="icon">👤</span>
+  </div>
+  
+  <div class="input-group" id="email-group">
+    <input type="email" id="reg-email" placeholder="Enter your email">
+    <span class="icon">📧</span>
+  </div>
+  
+  <div class="input-group" id="password-group">
+    <input type="password" id="reg-password" placeholder="Create a strong password">
+    <span class="icon">🔒</span>
+    <div class="password-strength">
+      <div class="strength-bar">
+        <div class="strength-fill" id="strength-fill"></div>
+      </div>
+      <div class="requirements">
+        <div class="requirement" id="req-length">At least 6 characters</div>
+        <div class="requirement" id="req-upper">One uppercase letter</div>
+        <div class="requirement" id="req-lower">One lowercase letter</div>
+        <div class="requirement" id="req-number">One number</div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="error" id="register-error"></div>
+  <div class="success-message" id="success-message"></div>
+  
+  <button class="register-btn" id="register-btn">Create Account</button>
+  
+  <div class="login-link">
+    <p>Already have an account? <a href="index.html">Sign in here</a></p>
+  </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-app.js";
+import { getAuth, createUserWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-auth.js";
+import { getFirestore, setDoc, doc } from "https://www.gstatic.com/firebasejs/10.4.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB_G4hfiis6DjmPiwsh5-hnNKVztMfd_T4",
+  authDomain: "booking-sw.firebaseapp.com",
+  projectId: "booking-sw",
+  storageBucket: "booking-sw.firebasestorage.app",
+  messagingSenderId: "134246403096",
+  appId: "1:134246403096:web:900da94277e8b70c4cc76d"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+document.addEventListener('DOMContentLoaded', () => {
+  const registerBtn = document.getElementById('register-btn');
+  const errorEl = document.getElementById('register-error');
+  const successEl = document.getElementById('success-message');
+  const container = document.querySelector('.register-container');
+
+  // Form elements
+  const nameInput = document.getElementById('reg-name');
+  const emailInput = document.getElementById('reg-email');
+  const passwordInput = document.getElementById('reg-password');
+
+  // Input groups
+  const nameGroup = document.getElementById('name-group');
+  const emailGroup = document.getElementById('email-group');
+  const passwordGroup = document.getElementById('password-group');
+
+  // Password strength elements
+  const strengthFill = document.getElementById('strength-fill');
+  const reqLength = document.getElementById('req-length');
+  const reqUpper = document.getElementById('req-upper');
+  const reqLower = document.getElementById('req-lower');
+  const reqNumber = document.getElementById('req-number');
+
+  function showError(message) {
+    errorEl.textContent = message;
+    errorEl.classList.add('show');
+    successEl.classList.remove('show');
+  }
+
+  function showSuccess(message) {
+    successEl.textContent = message;
+    successEl.classList.add('show');
+    errorEl.classList.remove('show');
+  }
+
+  function hideMessages() {
+    errorEl.classList.remove('show');
+    successEl.classList.remove('show');
+  }
+
+  function validateEmail(email) {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  }
+
+  function validateName(name) {
+    return name.trim().length >= 2;
+  }
+
+  function checkPasswordStrength(password) {
+    let strength = 0;
+    const requirements = {
+      length: password.length >= 6,
+      upper: /[A-Z]/.test(password),
+      lower: /[a-z]/.test(password),
+      number: /\d/.test(password)
+    };
+
+    // Update requirement indicators
+    reqLength.classList.toggle('met', requirements.length);
+    reqUpper.classList.toggle('met', requirements.upper);
+    reqLower.classList.toggle('met', requirements.lower);
+    reqNumber.classList.toggle('met', requirements.number);
+
+    // Calculate strength
+    Object.values(requirements).forEach(met => {
+      if (met) strength++;
+    });
+
+    // Update strength bar
+    strengthFill.className = 'strength-fill';
+    if (strength === 1) strengthFill.classList.add('strength-weak');
+    else if (strength === 2) strengthFill.classList.add('strength-medium');
+    else if (strength === 3) strengthFill.classList.add('strength-good');
+    else if (strength === 4) strengthFill.classList.add('strength-strong');
+
+    return strength >= 4;
+  }
+
+  function validateInput(input, group, validationFn) {
+    const isValid = validationFn(input.value);
+    group.classList.toggle('valid', isValid);
+    group.classList.toggle('invalid', !isValid && input.value.length > 0);
+    return isValid;
+  }
+
+  // Real-time validation
+  nameInput.addEventListener('input', () => {
+    validateInput(nameInput, nameGroup, validateName);
+    hideMessages();
+  });
+
+  emailInput.addEventListener('input', () => {
+    validateInput(emailInput, emailGroup, validateEmail);
+    hideMessages();
+  });
+
+  passwordInput.addEventListener('input', () => {
+    const isStrong = checkPasswordStrength(passwordInput.value);
+    validateInput(passwordInput, passwordGroup, () => isStrong);
+    hideMessages();
+  });
+
+  registerBtn.addEventListener('click', async () => {
+    const name = nameInput.value.trim();
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
+    
+    hideMessages();
+
+    // Validation
+    if (!name || !email || !password) {
+      showError("Please fill in all fields");
+      return;
+    }
+
+    if (!validateName(name)) {
+      showError("Name must be at least 2 characters long");
+      return;
+    }
+
+    if (!validateEmail(email)) {
+      showError("Please enter a valid email address");
+      return;
+    }
+
+    if (!checkPasswordStrength(password)) {
+      showError("Password must meet all requirements");
+      return;
+    }
+
+    // Add loading state
+    container.classList.add('loading');
+    registerBtn.textContent = 'Creating Account...';
+
+    try {
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const uid = userCredential.user.uid;
+      await setDoc(doc(db, "users", uid), { 
+        name, 
+        email, 
+        role: "No Access",
+        createdAt: new Date().toISOString()
+      });
+      
+      showSuccess("🎉 Account created successfully! Please wait for admin approval before you can log in.");
+      
+      // Clear form
+      nameInput.value = '';
+      emailInput.value = '';
+      passwordInput.value = '';
+      
+      // Reset validation states
+      nameGroup.classList.remove('valid', 'invalid');
+      emailGroup.classList.remove('valid', 'invalid');
+      passwordGroup.classList.remove('valid', 'invalid');
+      
+      // Reset password strength
+      strengthFill.className = 'strength-fill';
+      document.querySelectorAll('.requirement').forEach(req => req.classList.remove('met'));
+      
+      setTimeout(() => {
+        window.location.href = "index.html";
+      }, 3000);
+      
+    } catch(error) {
+      let errorMessage = "Registration failed. Please try again.";
+      
+      if (error.code === 'auth/email-already-in-use') {
+        errorMessage = "An account with this email already exists.";
+      } else if (error.code === 'auth/invalid-email') {
+        errorMessage = "Invalid email address.";
+      } else if (error.code === 'auth/weak-password') {
+        errorMessage = "Password is too weak.";
+      }
+      
+      showError(errorMessage);
+    } finally {
+      // Remove loading state
+      container.classList.remove('loading');
+      registerBtn.textContent = 'Create Account';
+    }
+  });
+
+  // Add enter key support
+  document.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      registerBtn.click();
+    }
+  });
+});
+</script>
+</body>
+</html>
