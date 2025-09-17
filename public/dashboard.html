@@ -292,8 +292,11 @@
         .sort((a,b)=> (a.meta?.name||"").localeCompare(b.meta?.name||""))
         .forEach(g=>{
           const name = g.meta?.name || "(ไม่มีชื่อ)";
-          const floor = g.meta?.floor ?? g.meta?.level ?? null;
+          const floor = g.meta?.location ?? g.meta?.floor ?? g.meta?.level ?? null;
           const cap   = g.meta?.capacity ?? g.meta?.cap ?? null;
+          
+          // Debug: แสดงข้อมูลห้องใน console
+          console.log('Room data:', g.meta?.name, 'Floor:', floor, 'Raw data:', g.meta);
           const h = hueFromString(g.meta?.id || name);
 
           const card=document.createElement("div");
@@ -305,7 +308,9 @@
 
           const nameDiv=document.createElement("div");
           nameDiv.className="room-name";
-          nameDiv.innerHTML=`<span class="color-dot"></span><span>${name}</span>`;
+          // แสดงชื่อห้องพร้อม floor ในวงเล็บสีเทา
+          const floorHtml = floor ? ` <small class="text-secondary">(ชั้น ${floor})</small>` : '';
+          nameDiv.innerHTML=`<span class="color-dot"></span><span>${name}${floorHtml}</span>`;
 
           const live=document.createElement("span");
           const busy = g.now.length>0;
