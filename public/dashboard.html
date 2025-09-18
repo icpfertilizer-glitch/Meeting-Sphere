@@ -18,8 +18,8 @@
       --shadow: 0 8px 32px rgba(0,0,0,.08), 0 4px 16px rgba(0,0,0,.04);
       --shadow-hover: 0 12px 48px rgba(0,0,0,.12), 0 8px 24px rgba(0,0,0,.08);
       --ring: 0 0 0 3px rgba(13,110,253,.15);
-      --gradient-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-      --glass: rgba(255,255,255,.85);
+      --gradient-bg: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      --glass: rgba(255,255,255,.95);
     }
     * { box-sizing: border-box; }
     html, body { height: 100%; font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif; overflow-x: auto; }
@@ -27,93 +27,395 @@
     body::before {
       content: ''; position: fixed; inset: 0; pointer-events: none; z-index: -1;
       background:
-        radial-gradient(circle at 20% 20%, rgba(255,255,255,.1) 0%, transparent 50%),
-        radial-gradient(circle at 80% 80%, rgba(255,255,255,.08) 0%, transparent 50%),
-        radial-gradient(circle at 40% 60%, rgba(120,119,198,.3) 0%, transparent 50%);
+        radial-gradient(circle at 20% 20%, rgba(255,255,255,.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(255,255,255,.03) 0%, transparent 50%);
     }
 
     /* Container หลัก */
-    .board { min-height: 100vh; padding: 20px; display: flex; flex-direction: column; }
+    .board { 
+      height: 100vh; 
+      padding: 12px; 
+      display: flex; 
+      flex-direction: column; 
+      overflow: hidden; /* ป้องกัน scroll */
+    }
 
     /* Header */
     .board-head{
-      display:flex; align-items:center; justify-content:space-between; gap:20px;
-      margin-bottom:30px; background:var(--glass); backdrop-filter: blur(20px);
+      display:flex; align-items:center; justify-content:space-between; gap:16px;
+      margin-bottom:16px; background:var(--glass); backdrop-filter: blur(20px);
       border:1px solid rgba(255,255,255,.3); border-radius:var(--radius);
-      padding:20px 30px; box-shadow:var(--shadow); flex-wrap: wrap;
+      padding:12px 20px; box-shadow:var(--shadow); flex-wrap: wrap;
+      flex-shrink: 0; /* ไม่ให้ header หดตัว */
     }
 
     .now-chip{
       background: linear-gradient(135deg,#667eea,#764ba2); color:#fff; border:none;
-      border-radius:16px; padding:12px 20px; font-weight:700; font-size:1rem;
+      border-radius:12px; padding:10px 16px; font-weight:800; font-size:1.1rem;
       box-shadow:0 4px 16px rgba(102,126,234,.3); font-variant-numeric: tabular-nums; letter-spacing:.5px;
       display:block; width:100%; text-align:center;
-      line-height:1.25;
+      line-height:1.2;
     }
-    .now-chip i{ opacity:.9; margin-right:6px; }
-    .now-chip .sep{ opacity:.6; margin: 0 .5rem; }
-    .util{ display:flex; align-items:center; gap:12px; flex: 0 0 100%; width:100%; }
+    .now-chip i{ opacity:.9; margin-right:6px; font-size:1.1em; }
+    .now-chip .sep{ opacity:.6; margin: 0 .6rem; }
+    .util{ display:flex; align-items:center; gap:8px; flex: 0 0 100%; width:100%; }
 
-    /* Grid การ์ด */
-    .rooms-grid{ display:grid; grid-template-columns: repeat(auto-fit, minmax(380px,1fr)); gap:24px; flex:1; }
-    @media (min-width:1400px){ .rooms-grid{ grid-template-columns: repeat(3,1fr);} }
-    @media (min-width:1800px){ .rooms-grid{ grid-template-columns: repeat(4,1fr);} }
+    /* Grid การ์ด - ปรับให้พอดี 1 หน้า */
+    .rooms-grid{ 
+      display: grid; 
+      grid-template-columns: repeat(auto-fit, minmax(300px,1fr)); 
+      gap: 16px; 
+      flex: 1; 
+      overflow: hidden; /* ป้องกัน scroll */
+      align-content: start;
+    }
+    
+    /* ปรับ grid ตามขนาดหน้าจอ */
+    @media (min-width: 768px) and (max-width: 1199px) { 
+      .rooms-grid{ grid-template-columns: repeat(2, 1fr); } 
+    }
+    @media (min-width: 1200px) and (max-width: 1599px) { 
+      .rooms-grid{ grid-template-columns: repeat(3, 1fr); } 
+    }
+    @media (min-width: 1600px) and (max-width: 1999px) { 
+      .rooms-grid{ grid-template-columns: repeat(4, 1fr); } 
+    }
+    @media (min-width: 2000px) { 
+      .rooms-grid{ grid-template-columns: repeat(5, 1fr); } 
+    }
 
-    /* การ์ดห้อง */
+    /* การ์ดห้อง - ระบบย่อขนาดอัตโนมัติ */
     .room-card{
-      --h:210; background:var(--glass); backdrop-filter: blur(20px);
-      border:1px solid rgba(255,255,255,.3); border-radius:var(--radius);
-      padding:24px; box-shadow:var(--shadow); transition: all .4s cubic-bezier(.4,0,.2,1);
-      position:relative; overflow:hidden; min-height:320px; display:flex; flex-direction:column;
-      opacity:0; transform: translateY(8px); animation: fadeUp .5s ease forwards;
+      --h:210; 
+
+      background: #ffffff; /* พื้นหลังสีขาวธรรมดา */
+      border: 3px solid transparent;
+      border-radius: var(--radius);
+      padding: clamp(8px, 2vw, 16px); /* padding ปรับตามหน้าจอ */
+      box-shadow: var(--shadow); 
+      transition: all .4s cubic-bezier(.4,0,.2,1);
+      position: relative; 
+      overflow: visible; /* เปลี่ยนเป็น visible เพื่อให้เห็นเนื้อหาทั้งหมด */
+      height: calc((100vh - 100px) / 2 - 8px); /* เพิ่มพื้นที่ให้การ์ด */
+      min-height: 280px; /* ลดความสูงขั้นต่ำ */
+      max-height: 400px; /* เพิ่มความสูงสูงสุด */
+      display: flex; 
+      flex-direction: column;
+      opacity: 0; 
+      transform: translateY(8px);
+      animation: fadeUp .5s ease forwards;
+      background-image: linear-gradient(90deg, hsl(var(--h), 70%, 60%), hsl(var(--h), 80%, 70%), hsl(var(--h), 70%, 60%));
+      background-size: 200% 100%;
+      background-clip: border-box;
+      animation: neonBorder 3s ease-in-out infinite, fadeUp .5s ease forwards;
+
     }
+    
     @keyframes fadeUp{ to{ opacity:1; transform: translateY(0); } }
-
-    .room-card::before{ content:''; position:absolute; top:0; left:0; right:0; height:4px;
-      background: linear-gradient(90deg, hsl(var(--h),60%,60%), hsl(var(--h),70%,70%));
-      border-radius: var(--radius) var(--radius) 0 0;
+    
+    /* เอฟเฟกต์แสงนีออนวิ่งรอบกรอบ */
+    @keyframes neonBorder {
+      0%, 100% {
+        background-position: 0% 50%;
+        box-shadow: 
+          0 0 20px hsla(var(--h), 70%, 60%, 0.4),
+          0 0 40px hsla(var(--h), 70%, 60%, 0.2),
+          inset 0 0 20px hsla(var(--h), 70%, 60%, 0.1);
+      }
+      50% {
+        background-position: 100% 50%;
+        box-shadow: 
+          0 0 30px hsla(var(--h), 70%, 60%, 0.6),
+          0 0 60px hsla(var(--h), 70%, 60%, 0.3),
+          inset 0 0 30px hsla(var(--h), 70%, 60%, 0.15);
+      }
     }
-    .room-card:hover{ transform: translateY(-6px); box-shadow:var(--shadow-hover); border-color: rgba(255,255,255,.5); }
 
-    .room-title{ display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; margin-bottom:16px; gap:12px; }
-    .room-name{ display:flex; align-items:center; gap:10px; font-weight:800; font-size:1.15rem; color:rgba(0,0,0,.85); }
-    .room-name .color-dot{ width:12px; height:12px; border-radius:50%; background:hsl(var(--h),65%,55%); box-shadow:0 0 0 6px hsla(var(--h),65%,55%,.15); animation:pulse-room 3s ease-in-out infinite; }
-    @keyframes pulse-room{ 0%,100%{box-shadow:0 0 0 6px hsla(var(--h),65%,55%,.15)} 50%{box-shadow:0 0 0 10px hsla(var(--h),65%,55%,.25)} }
+    .room-card::before{ 
+      content:''; 
+      position:absolute; 
+      top:3px; left:3px; right:3px; bottom:3px;
+      background: #ffffff; /* พื้นหลังด้านในสีขาว */
+      border-radius: calc(var(--radius) - 3px);
+      z-index: 1;
+    }
+    
+    .room-card > * {
+      position: relative;
+      z-index: 2;
+    }
+    
+    .room-card:hover{ 
+      transform: translateY(-8px); 
+      animation-duration: 2s; /* เร็วขึ้นเมื่อ hover */
+    }
+
+    .room-title{ 
+      display:flex; 
+      align-items:center; 
+      justify-content:space-between; 
+      flex-wrap:wrap; 
+      margin-bottom: clamp(6px, 1vh, 12px); 
+      gap: clamp(4px, 1vw, 8px); 
+    }
+    
+    .room-name{ 
+      display:flex; 
+      align-items:center; 
+      gap: clamp(6px, 1vw, 12px); 
+      font-weight:900; 
+      font-size: clamp(1.2rem, 3vw, 1.8rem); /* ปรับขนาดตามหน้าจอ */
+      color:#1a1a1a; /* สีดำเข้มเพื่อความชัดเจน */
+      line-height: 1.1;
+    }
+    
+    .room-name .color-dot{ 
+      width:16px; 
+      height:16px; 
+      border-radius:50%; 
+      background:hsl(var(--h),70%,55%); 
+      box-shadow:0 0 0 6px hsla(var(--h),70%,55%,.2); 
+      animation:pulse-room 2s ease-in-out infinite; 
+    }
+    
+    @keyframes pulse-room{ 
+      0%,100%{
+        box-shadow:0 0 0 8px hsla(var(--h),70%,55%,.2);
+        transform: scale(1);
+      } 
+      50%{
+        box-shadow:0 0 0 16px hsla(var(--h),70%,55%,.4);
+        transform: scale(1.1);
+      } 
+    }
 
     .meta-info{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px; }
-    .meta-pill{ background:hsla(var(--h),100%,97%,.85); color:hsl(var(--h),50%,35%); border:1px solid hsla(var(--h),40%,70%,.3); border-radius:18px; padding:4px 10px; font-size:.78rem; font-weight:600; backdrop-filter: blur(10px); }
+    .meta-pill{ 
+      background: #f8f9fa; 
+      color: #495057; 
+      border: 1px solid #dee2e6; 
+      border-radius: 16px; 
+      padding: 4px 8px; 
+      font-size: 0.8rem; 
+      font-weight: 600; 
+    }
 
-    .live-pill{ display:inline-flex; align-items:center; gap:8px; padding:6px 12px; border-radius:18px; font-weight:700; font-size:.82rem; border:2px solid; backdrop-filter: blur(10px); transition: all .3s ease; }
-    .live-pill .beacon{ width:8px; height:8px; border-radius:50%; }
-    .live-free{ background: rgba(25,135,84,.15); border-color: rgba(25,135,84,.4); color:#0a5d2c; }
-    .live-free .beacon{ background:#198754; animation:pulseFree 1.5s infinite; }
-    .live-busy{ background: rgba(220,53,69,.15); border-color: rgba(220,53,69,.4); color:#842029; }
-    .live-busy .beacon{ background:#dc3545; animation:pulseBusy 1.5s infinite; }
-    @keyframes pulseFree{ 0%{box-shadow:0 0 0 0 rgba(25,135,84,.7)} 70%{box-shadow:0 0 0 6px rgba(25,135,84,0)} 100%{box-shadow:0 0 0 0 rgba(25,135,84,0)} }
-    @keyframes pulseBusy{ 0%{box-shadow:0 0 0 0 rgba(220,53,69,.7)} 70%{box-shadow:0 0 0 6px rgba(220,53,69,0)} 100%{box-shadow:0 0 0 0 rgba(220,53,69,0)} }
+    .live-pill{ 
+      display: inline-flex; 
+      align-items: center; 
+      gap: clamp(4px, 1vw, 8px); 
+      padding: clamp(6px, 1.5vw, 10px) clamp(8px, 2vw, 16px); 
+      border-radius: clamp(12px, 2vw, 20px); 
+      font-weight: 900; 
+      font-size: clamp(1rem, 2.5vw, 1.4rem); /* ปรับขนาดตามหน้าจอ */
+      border: 2px solid; 
+      transition: all .3s ease; 
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .live-pill .beacon{ 
+      width: 12px; 
+      height: 12px; 
+      border-radius: 50%; 
+    }
+    
+    .live-free{ 
+      background: #d4edda; 
+      border-color: #28a745; 
+      color: #155724; 
+    }
+    
+    .live-free .beacon{ 
+      background: #28a745; 
+      animation: pulseFree 1.5s infinite; 
+      box-shadow: 0 0 0 0 rgba(40,167,69,.7);
+    }
+    
+    .live-busy{ 
+      background: #f8d7da; 
+      border-color: #dc3545; 
+      color: #721c24; 
+    }
+    
+    .live-busy .beacon{ 
+      background: #dc3545; 
+      animation: pulseBusy 1.5s infinite; 
+      box-shadow: 0 0 0 0 rgba(220,53,69,.7);
+    }
+    
+    @keyframes pulseFree{ 
+      0%{
+        box-shadow: 0 0 0 0 rgba(40,167,69,.7);
+        transform: scale(1);
+      } 
+      70%{
+        box-shadow: 0 0 0 10px rgba(40,167,69,0);
+        transform: scale(1.2);
+      } 
+      100%{
+        box-shadow: 0 0 0 0 rgba(40,167,69,0);
+        transform: scale(1);
+      } 
+    }
+    
+    @keyframes pulseBusy{ 
+      0%{
+        box-shadow: 0 0 0 0 rgba(220,53,69,.7);
+        transform: scale(1);
+      } 
+      70%{
+        box-shadow: 0 0 0 10px rgba(220,53,69,0);
+        transform: scale(1.2);
+      } 
+      100%{
+        box-shadow: 0 0 0 0 rgba(220,53,69,0);
+        transform: scale(1);
+      } 
+    }
 
-    .section-label{ display:flex; align-items:center; gap:8px; font-weight:800; font-size:.9rem; color:rgba(0,0,0,.65); margin:12px 0 8px; position:relative; }
-    .section-label i{ opacity:.9; }
-    .section-label::after{ content:""; flex:1; height:1px; background: linear-gradient(90deg, hsla(var(--h),50%,70%,.35), transparent); }
+    .section-label{ 
+      display: flex; 
+      align-items: center; 
+      gap: clamp(3px, 0.8vw, 6px); 
+      font-weight: 900; 
+      font-size: clamp(0.8rem, 1.8vw, 1rem); /* ปรับขนาดตามหน้าจอ */
+      color: #2c3e50; 
+      margin: clamp(4px, 1vh, 8px) 0 clamp(3px, 0.8vh, 6px); 
+      position: relative;
+      width: 100%; /* กำหนดความกว้างให้ชัดเจน */
+      box-sizing: border-box; /* รวม padding/border ในการคำนวณ */
+    }
+    
+    .section-label i{ 
+      opacity: .9; 
+      font-size: 1.1em;
+      flex-shrink: 0; /* ป้องกัน icon หดตัว */
+    }
+    
+    .section-label::after{ 
+      content: ""; 
+      width: 60px; /* กำหนดความกว้างคงที่ */
+      height: 2px; 
+      background: linear-gradient(90deg, hsla(var(--h),60%,60%,.6), transparent); 
+      border-radius: 1px;
+      margin-left: auto; /* ดันไปขวา */
+      flex-shrink: 0; /* ป้องกันหดตัว */
+    }
 
-    .section-content{ flex:1; display:flex; flex-direction:column; gap:8px; }
+    .section-content{ 
+      flex: 1; 
+      display: flex; 
+      flex-direction: column; 
+      gap: clamp(2px, 0.5vh, 4px); /* gap ปรับตามหน้าจอ */
+      overflow: visible; /* เปลี่ยนเป็น visible */
+      min-height: 0; /* ให้ flex item สามารถหดได้ */
+      max-height: calc(100% - clamp(80px, 15vh, 120px)); /* ปรับตามหน้าจอ */
+    }
 
-    .status-item{ display:flex; align-items:center; justify-content:space-between; gap:12px; background:rgba(255,255,255,.65); backdrop-filter: blur(10px); border:1px solid rgba(255,255,255,.45); border-radius:12px; padding:10px 14px; transition: all .25s ease; }
-    .status-item:hover{ background: rgba(255,255,255,.85); transform: translateX(3px); }
-    .status-left{ display:flex; align-items:center; gap:8px; min-width:0; }
-    .status-left i{ opacity:.7; }
-    .status-time{ font-variant-numeric: tabular-nums; font-weight:800; padding:6px 10px; border-radius:10px; background:hsla(var(--h),100%,98%,.9); border:1px solid hsla(var(--h),40%,70%,.25); color:hsl(var(--h),50%,35%); font-size:.82rem; }
-    .status-who{ color:rgba(0,0,0,.65); font-size:.9rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:60%; font-weight:600; }
+    .status-item{ 
+      display: flex; 
+      align-items: center; 
+      justify-content: space-between; 
+      gap: clamp(3px, 0.8vw, 6px); 
+      background: #f8f9fa; 
+      border: 1px solid #e9ecef; 
+      border-radius: clamp(4px, 1vw, 8px); 
+      padding: clamp(3px, 1vh, 6px) clamp(5px, 1.5vw, 10px); /* ปรับตามหน้าจอ */
+      transition: all .25s ease; 
+      font-size: clamp(0.7rem, 1.5vw, 0.9rem); /* เพิ่มการควบคุมขนาดฟอนต์ */
+    }
+    
+    .status-item:hover{ 
+      background: #e9ecef; 
+      transform: translateX(4px); 
+      border-color: #adb5bd;
+    }
+    
+    .status-left{ 
+      display: flex; 
+      align-items: center; 
+      gap: 8px; 
+      min-width: 0; 
+    }
+    
+    .status-left i{ 
+      opacity: .8; 
+      font-size: 1em;
+    }
+    
+    .status-time{ 
+      font-variant-numeric: tabular-nums; 
+      font-weight: 800; 
+      padding: clamp(2px, 0.8vh, 4px) clamp(4px, 1.2vw, 8px); 
+      border-radius: clamp(3px, 0.8vw, 6px); 
+      background: #ffffff; 
+      border: 1px solid hsl(var(--h),60%,60%); 
+      color: hsl(var(--h),40%,30%); 
+      font-size: clamp(0.7rem, 1.4vw, 0.85rem); /* ปรับขนาดตามหน้าจอ */
+    }
+    
+    .status-who{ 
+      color: #495057; 
+      font-size: clamp(0.7rem, 1.4vw, 0.85rem); /* ปรับขนาดตามหน้าจอ */
+      white-space: nowrap; 
+      overflow: hidden; 
+      text-overflow: ellipsis; 
+      max-width: 60%; 
+      font-weight: 600; 
+    }
 
-    .progress-wrap{ background: rgba(255,255,255,.4); backdrop-filter: blur(10px); border:1px solid rgba(255,255,255,.3); border-radius:8px; height:8px; overflow:hidden; margin-top:4px; }
-    .progress-bar{ height:100%; background: linear-gradient(90deg, hsl(var(--h),60%,55%), hsl(var(--h),70%,65%)); transition: width .3s ease; border-radius:8px; }
+    .progress-wrap{ 
+      background: #e9ecef; 
+      border: 1px solid #dee2e6; 
+      border-radius: 8px; 
+      height: 8px; 
+      overflow: hidden; 
+      margin-top: 4px; 
+    }
+    
+    .progress-bar{ 
+      height: 100%; 
+      background: linear-gradient(90deg, hsl(var(--h),60%,55%), hsl(var(--h),70%,65%)); 
+      transition: width .3s ease; 
+      border-radius: 8px; 
+      position: relative;
+    }
+    
+    .progress-bar::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
 
     /* ป้ายเพิ่งจบ */
     .badge-soft{
-      display:inline-flex; align-items:center; gap:6px; padding:4px 8px; border-radius:999px; font-weight:800; font-size:.72rem;
-      background: rgba(108,117,125,.12); border:1px solid rgba(108,117,125,.28); color:#495057;
+      display: inline-flex; 
+      align-items: center; 
+      gap: 4px; 
+      padding: 4px 8px; 
+      border-radius: 12px; 
+      font-weight: 700; 
+      font-size: 0.75rem; 
+      background: #f8f9fa; 
+      border: 1px solid #dee2e6; 
+      color: #495057;
     }
-    .badge-soft i{ opacity:.8; }
+    
+    .badge-soft i{ 
+      opacity: .8; 
+      font-size: 1em;
+    }
 
     /* ปุ่มลอย (เต็มจอ) */
     .fab{
@@ -127,11 +429,59 @@
     .fab:hover{ box-shadow: var(--shadow-hover); transform: translateY(-2px); }
     .fab:focus-visible{ outline:0; box-shadow: var(--ring); }
 
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      color: #6c757d;
+      font-size: 0.9rem;
+      font-weight: 600;
+      padding: 8px;
+      font-style: italic;
+    }
+
+    /* More Items Indicator */
+    .more-items {
+      text-align: center;
+      color: #6c757d;
+      font-size: clamp(0.6rem, 1.2vw, 0.8rem);
+      font-weight: 600;
+      padding: clamp(2px, 0.8vh, 4px) clamp(4px, 1.2vw, 8px);
+      margin-top: clamp(2px, 0.5vh, 4px);
+      background: #f8f9fa;
+      border: 1px dashed #dee2e6;
+      border-radius: clamp(3px, 0.8vw, 6px);
+      font-style: italic;
+    }
+
+
+
     /* Responsive */
     @media (max-width:768px){
-      .rooms-grid{ grid-template-columns:1fr; gap:16px; }
-      .board{ padding:16px; }
-      .board-head{ padding:16px; }
+      .rooms-grid{ 
+        grid-template-columns: 1fr; 
+        gap: 12px; 
+      }
+      .board{ padding: 8px; }
+      .board-head{ padding: 8px 12px; }
+      .room-card{ 
+        height: calc((100vh - 100px) / 3 - 8px); /* 3 แถวในมือถือ */
+        min-height: 200px;
+        max-height: 250px;
+      }
+      .room-name{ font-size: 1.4rem; }
+      .live-pill{ font-size: 1.1rem; padding: 8px 12px; }
+      .section-label{ font-size: 1rem; }
+    }
+    
+    @media (max-width:480px){
+      .room-name{ font-size: 1.2rem; }
+      .live-pill{ font-size: 1rem; padding: 6px 10px; }
+      .section-label{ font-size: 0.9rem; }
+      .room-card{ 
+        height: calc((100vh - 80px) / 4 - 6px); /* 4 แถวในหน้าจอเล็ก */
+        min-height: 160px;
+        max-height: 200px;
+      }
     }
   </style>
 </head>
@@ -266,6 +616,8 @@
       return div;
     }
 
+
+
     /* ====== Render ====== */
     function renderBoard(rooms, meetingsToday){
       grid.innerHTML="";
@@ -282,9 +634,22 @@
         const rid = m.roomId || `misc:${m.roomName || "ห้อง"}`;
         if(!grouped[rid]) grouped[rid] = { meta:{ id:rid, name:m.roomName || "(ไม่มีชื่อ)" }, prev:[], now:[], next:[] };
         const s=hm2m(m.start), e=hm2m(m.end);
-        if(e<=nowM) grouped[rid].prev.push(m);
-        else if(s<=nowM && nowM<e) grouped[rid].now.push(m);
-        else grouped[rid].next.push(m);
+        
+        // Debug: แสดงข้อมูลการจัดกลุ่ม
+        console.log(`Meeting: ${m.roomName} ${m.start}-${m.end}, nowM: ${nowM}, s: ${s}, e: ${e}`);
+        
+        if(e<=nowM) {
+          grouped[rid].prev.push(m);
+          console.log(`-> Added to PREV: ${m.start}-${m.end}`);
+        }
+        else if(s<=nowM && nowM<e) {
+          grouped[rid].now.push(m);
+          console.log(`-> Added to NOW: ${m.start}-${m.end}`);
+        }
+        else {
+          grouped[rid].next.push(m);
+          console.log(`-> Added to NEXT: ${m.start}-${m.end}`);
+        }
       });
 
       // วาดการ์ดตามชื่อ
@@ -297,6 +662,7 @@
           
           // Debug: แสดงข้อมูลห้องใน console
           console.log('Room data:', g.meta?.name, 'Floor:', floor, 'Raw data:', g.meta);
+          console.log(`Room ${name}: prev=${g.prev.length}, now=${g.now.length}, next=${g.next.length}`);
           const h = hueFromString(g.meta?.id || name);
 
           const card=document.createElement("div");
@@ -335,28 +701,14 @@
 
           /* ก่อนหน้า: โชว์ 1 รายการล่าสุดที่เพิ่งจบ */
           const prevSec=document.createElement("div");
-          prevSec.appendChild(makeSectionLabel("bi-clock-history","ก่อนหน้า", h));
+          const prevLabel = g.prev.length > 0 ? `ก่อนหน้า (${g.prev.length})` : "ก่อนหน้า";
+          prevSec.appendChild(makeSectionLabel("bi-clock-history", prevLabel, h));
           if (g.prev.length){
             // ล่าสุด = จบช้าที่สุด
             g.prev.sort((a,b)=> (a.end||"").localeCompare(b.end||""));
-            const last = g.prev[g.prev.length-1];
-            const endM = hm2m(last.end);
-            const diffMin = Math.max(0, nowM - endM); // นาทีตั้งแต่จบ
-
-            let badge = null;
-            if (diffMin <= 30){ // เพิ่งจบภายใน 30 นาที
-              badge = document.createElement("span");
-              badge.className = "badge-soft";
-              badge.innerHTML = `<i class="bi bi-check2-circle"></i> เพิ่งจบ ${diffMin} นาทีที่แล้ว`;
-            } else {
-              badge = document.createElement("span");
-              badge.className = "badge-soft";
-              badge.innerHTML = `<i class="bi bi-flag"></i> จบ ${last.end} น.`;
-            }
-
-            prevSec.appendChild(
-              makeStatusItem(h, `${last.start}–${last.end}`, last.bookerName||last.userName||"", "bi-person-check", badge)
-            );
+            const lastMeeting = g.prev[g.prev.length-1];
+            // แสดงเฉพาะรายการเดียว (ที่เพิ่งจบล่าสุด)
+            prevSec.appendChild(makeStatusItem(h, `${lastMeeting.start}–${lastMeeting.end}`, lastMeeting.bookerName||lastMeeting.userName||"", "bi-person-check"));
           } else {
             prevSec.appendChild(makeEmptyState("—"));
           }
@@ -364,13 +716,14 @@
 
           /* ขณะนี้ */
           const nowSec=document.createElement("div");
-          nowSec.appendChild(makeSectionLabel("bi-broadcast-pin","ขณะนี้", h));
+          const nowLabel = g.now.length > 0 ? `ขณะนี้ (${g.now.length})` : "ขณะนี้";
+          nowSec.appendChild(makeSectionLabel("bi-broadcast-pin", nowLabel, h));
           if (g.now.length){
             g.now.sort((a,b)=> (a.start||"").localeCompare(b.start||""));
-            g.now.forEach(m=>{
-              nowSec.appendChild(makeStatusItem(h, `${m.start}–${m.end}`, m.bookerName||m.userName||"", "bi-dot"));
-              nowSec.appendChild(makeProgress(h, m.start, m.end));
-            });
+            // แสดงเฉพาะรายการแรก (ที่เริ่มเร็วที่สุด)
+            const currentMeeting = g.now[0];
+            nowSec.appendChild(makeStatusItem(h, `${currentMeeting.start}–${currentMeeting.end}`, currentMeeting.bookerName||currentMeeting.userName||"", "bi-dot"));
+            nowSec.appendChild(makeProgress(h, currentMeeting.start, currentMeeting.end));
           }else{
             nowSec.appendChild(makeEmptyState("ไม่มีการใช้งาน"));
           }
@@ -378,12 +731,13 @@
 
           /* ต่อไป */
           const nextSec=document.createElement("div");
-          nextSec.appendChild(makeSectionLabel("bi-calendar-event","หลังจากนี้", h));
+          const nextLabel = g.next.length > 0 ? `หลังจากนี้ (${g.next.length})` : "หลังจากนี้";
+          nextSec.appendChild(makeSectionLabel("bi-calendar-event", nextLabel, h));
           if (g.next.length){
             g.next.sort((a,b)=> (a.start||"").localeCompare(b.start||""));
-            g.next.slice(0,3).forEach(m=>{
-              nextSec.appendChild(makeStatusItem(h, `${m.start}–${m.end}`, m.bookerName||m.userName||"", "bi-chevron-right"));
-            });
+            // แสดงเฉพาะรายการแรก (ที่จะถึงล่าสุด)
+            const nextMeeting = g.next[0];
+            nextSec.appendChild(makeStatusItem(h, `${nextMeeting.start}–${nextMeeting.end}`, nextMeeting.bookerName||nextMeeting.userName||"", "bi-chevron-right"));
           }else{
             nextSec.appendChild(makeEmptyState("ไม่มีการจองต่อ"));
           }
@@ -408,11 +762,14 @@
 
     function subscribeToday(){
       const today = toYmd(new Date());
+      console.log('Subscribing to meetings for date:', today);
       const qToday = query(meetingsRef, where("date","==", today));
       return onSnapshot(qToday, snap=>{
         todayMeetings = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+        console.log('Today meetings loaded:', todayMeetings.length, todayMeetings);
         renderBoard(rooms, todayMeetings);
       }, _err=>{
+        console.error('Error loading meetings:', _err);
         todayMeetings = [];
         renderBoard(rooms, todayMeetings);
       });
