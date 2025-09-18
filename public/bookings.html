@@ -885,6 +885,48 @@
     // ================= FullCalendar =================
     let calendar; let unsubCal = null;
 
+    // ฟังก์ชัน refresh ข้อมูล calendar ทั้งหมด
+    function refreshCalendarData() {
+      if (!calendar) return;
+
+      // วิธีที่ 1: ลบ subscription เก่าและสร้างใหม่
+      if (unsubCal) {
+        unsubCal();
+        unsubCal = null;
+      }
+
+      // วิธีที่ 2: Query ข้อมูลใหม่ทั้งหมดโดยไม่จำกัด range
+      const today = new Date();
+      const startDate = new Date(today.getFullYear() - 1, 0, 1); // 1 ปีที่แล้ว
+      const endDate = new Date(today.getFullYear() + 1, 11, 31); // 1 ปีข้างหน้า
+
+      const startStr = ymd(startDate);
+      const endStr = ymd(endDate);
+
+      const qRef = query(
+        meetingsRef,
+        where('date', '>=', startStr),
+        where('date', '<=', endStr),
+        orderBy('date')
+      );
+
+      // Subscribe ใหม่กับ range กว้างๆ
+      unsubCal = onSnapshot(qRef, snap => {
+        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Clear events เก่าทั้งหมด
+        calendar.removeAllEvents();
+
+        // เพิ่ม events ใหม่ทั้งหมด
+        const events = toEvents(docs);
+        events.forEach(event => {
+          calendar.addEvent(event);
+        });
+      }, err => {
+        console.error('Refresh calendar error:', err);
+      });
+    }
+
     function toEvents(docs) {
       docs.sort((a, b) => (a.date || '').localeCompare(b.date || '') || (a.start || '').localeCompare(b.start || ''));
       return docs.map(m => {
@@ -903,8 +945,16 @@
     }
 
     function subscribeCalendarRange(info, successCallback, failureCallback) {
-      const startStr = ymd(info.start);
-      const endStr = ymd(new Date(info.end.getTime() - 24 * 60 * 60 * 1000)); // exclusive
+      // ขยาย range ให้กว้างขึ้น เพื่อให้ครอบคลุมข้อมูลที่อาจจะอยู่นอกหน้าจอ
+      const startDate = new Date(info.start);
+      const endDate = new Date(info.end);
+
+      // ขยายไปข้างหลัง 2 เดือน และข้างหน้า 2 เดือน
+      startDate.setMonth(startDate.getMonth() - 2);
+      endDate.setMonth(endDate.getMonth() + 2);
+
+      const startStr = ymd(startDate);
+      const endStr = ymd(new Date(endDate.getTime() - 24 * 60 * 60 * 1000)); // exclusive
 
       if (unsubCal) { unsubCal(); unsubCal = null; }
 
@@ -917,7 +967,11 @@
 
       unsubCal = onSnapshot(qRef, snap => {
         const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        successCallback(toEvents(docs));
+        // Filter เฉพาะข้อมูลที่อยู่ใน range จริงๆ ของ calendar
+        const originalStartStr = ymd(info.start);
+        const originalEndStr = ymd(new Date(info.end.getTime() - 24 * 60 * 60 * 1000));
+        const filteredDocs = docs.filter(d => d.date >= originalStartStr && d.date <= originalEndStr);
+        successCallback(toEvents(filteredDocs));
       }, err => {
         console.error('Calendar range error:', err);
         if (failureCallback) failureCallback(err);
@@ -1039,6 +1093,14 @@
     const modalEl = document.getElementById('bookingModal');
     // eslint-disable-next-line no-undef
     const modal = new bootstrap.Modal(modalEl);
+
+    // Clear state เมื่อ modal ถูกปิด
+    modalEl.addEventListener('hidden.bs.modal', function () {
+      // Clear form
+      $('#bookingId').value = '';
+      editingMeeting = null;
+      bookingForm.reset();
+    });
     const bookingForm = document.getElementById('bookingForm');
     const startSel = document.getElementById('startTime');
     const endSel = document.getElementById('endTime');
@@ -1056,15 +1118,22 @@
       return arr.some(m => isOverlapping(start, end, m.start, m.end));
     }
 
-    function fetchDayMeetings(dateStr, roomId) {
-      return new Promise((resolve) => {
+    async function fetchDayMeetings(dateStr, roomId, excludeId = null) {
+      try {
         const qDay = query(meetingsRef, where('date', '==', dateStr));
-        const unsub = onSnapshot(qDay, snap => {
-          const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const filtered = all.filter(x => x.roomId === roomId).sort((a, b) => (a.start || '').localeCompare(b.start || ''));
-          unsub(); resolve(filtered);
-        }, err => { console.error(err); try { unsub(); } catch { } resolve([]); });
-      });
+        const snap = await getDocs(qDay);
+        const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const filtered = all
+          .filter(x => x.roomId === roomId && (!excludeId || x.id !== excludeId))
+          .sort((a, b) => (a.start || '').localeCompare(b.start || ''));
+
+
+
+        return filtered;
+      } catch (err) {
+        console.error('fetchDayMeetings error:', err);
+        return [];
+      }
     }
 
     function fillRoomDropdown(selectEl) {
@@ -1081,17 +1150,213 @@
       });
     }
 
-    // ✅ ครึ่งชั่วโมง 08:00–18:00 + filter เฉพาะ "ตั้งแต่ตอนนี้" เมื่อเป็นวันนี้
-    async function fillTimeSelects(roomId, dateStr, preStart = null, preEnd = null) {
+    // ฟังก์ชันสำหรับโหมดสร้างใหม่ (ไม่มี preStart/preEnd)
+    async function fillTimeSelectsForCreate(roomId, dateStr) {
+      const startSel = document.getElementById('startTime');
+      const endSel = document.getElementById('endTime');
+
+      // Clear ทั้งหมด
       startSel.innerHTML = '';
       endSel.innerHTML = '';
+      startSel.onchange = null;
+
       const submitBtn = bookingForm.querySelector('button[type="submit"]');
       if (!roomId || !dateStr) { if (submitBtn) submitBtn.disabled = true; return; }
 
       const DAY_START = 8 * 60;
       const DAY_END = 19 * 60;
       const todayStr = toYmd(new Date());
-      const taken = await fetchDayMeetings(dateStr, roomId);
+      const taken = await fetchDayMeetings(dateStr, roomId, null); // ไม่ exclude อะไร
+
+      // สร้าง start time options
+      let startMin = DAY_START;
+      if (dateStr === todayStr) {
+        const roundedNow = roundUpToNext30(toMin(nowHM()));
+        startMin = Math.max(DAY_START, Math.min(roundedNow, DAY_END - 30));
+      }
+
+      let startCandidates = [];
+      for (let m = DAY_START; m <= DAY_END - 30; m += 30) startCandidates.push(minToHH(m));
+      if (dateStr === todayStr) {
+        startCandidates = startCandidates.filter(t => toMin(t) >= startMin);
+      }
+
+      for (const s of startCandidates) {
+        const isBusy = taken.some(m => isOverlapping(s, minToHH(toMin(s) + 30), m.start, m.end));
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        if (isBusy) {
+          opt.disabled = true;
+          opt.style.background = '#888';
+          opt.style.color = '#fff';
+        }
+        startSel.appendChild(opt);
+      }
+
+      // เลือก option แรกที่ไม่ disabled
+      const firstAvailable = Array.from(startSel.options).find(o => !o.disabled);
+      if (firstAvailable) startSel.value = firstAvailable.value;
+
+      // สร้าง end time options
+      function rebuildEnds() {
+        endSel.innerHTML = '';
+        const sVal = startSel.value;
+        if (!sVal) { if (submitBtn) submitBtn.disabled = true; return; }
+        const sMin = toMin(sVal);
+        for (let m = sMin + 30; m <= DAY_END; m += 30) {
+          const e = minToHH(m);
+          const isBusy = taken.some(mtg => isOverlapping(sVal, e, mtg.start, mtg.end));
+          const opt = document.createElement('option');
+          opt.value = e;
+          opt.textContent = e;
+          if (isBusy) {
+            opt.disabled = true;
+            opt.style.background = '#888';
+            opt.style.color = '#fff';
+          }
+          endSel.appendChild(opt);
+        }
+        const firstAvailable = Array.from(endSel.options).find(o => !o.disabled);
+        if (firstAvailable) endSel.value = firstAvailable.value;
+        if (submitBtn) submitBtn.disabled = endSel.options.length === 0 || !firstAvailable;
+      }
+
+      startSel.onchange = rebuildEnds;
+      rebuildEnds();
+    }
+
+    // ฟังก์ชันสำหรับโหมดแก้ไข (มี preStart/preEnd)
+    async function fillTimeSelectsForEdit(roomId, dateStr, preStart, preEnd, excludeId) {
+      const startSel = document.getElementById('startTime');
+      const endSel = document.getElementById('endTime');
+
+      // Clear ทั้งหมด
+      startSel.innerHTML = '';
+      endSel.innerHTML = '';
+      startSel.onchange = null;
+
+      const submitBtn = bookingForm.querySelector('button[type="submit"]');
+      if (!roomId || !dateStr) { if (submitBtn) submitBtn.disabled = true; return; }
+
+      const DAY_START = 8 * 60;
+      const DAY_END = 19 * 60;
+      const todayStr = toYmd(new Date());
+      const taken = await fetchDayMeetings(dateStr, roomId, excludeId); // exclude การจองปัจจุบัน
+
+      // สร้าง start time options
+      let startMin = DAY_START;
+      if (dateStr === todayStr) {
+        const roundedNow = roundUpToNext30(toMin(nowHM()));
+        startMin = Math.max(DAY_START, Math.min(roundedNow, DAY_END - 30));
+      }
+
+      let startCandidates = [];
+      for (let m = DAY_START; m <= DAY_END - 30; m += 30) startCandidates.push(minToHH(m));
+      if (dateStr === todayStr) {
+        startCandidates = startCandidates.filter(t => toMin(t) >= startMin);
+      }
+
+      for (const s of startCandidates) {
+        const isBusy = taken.some(m => isOverlapping(s, minToHH(toMin(s) + 30), m.start, m.end));
+        const opt = document.createElement('option');
+        opt.value = s;
+        opt.textContent = s;
+        if (isBusy) {
+          opt.disabled = true;
+          opt.style.background = '#888';
+          opt.style.color = '#fff';
+        }
+        startSel.appendChild(opt);
+      }
+
+      // ตั้งค่า preStart
+      if (preStart && Array.from(startSel.options).some(o => o.value === preStart && !o.disabled)) {
+        startSel.value = preStart;
+      } else {
+        const firstAvailable = Array.from(startSel.options).find(o => !o.disabled);
+        if (firstAvailable) startSel.value = firstAvailable.value;
+      }
+
+      // สร้าง end time options
+      function rebuildEnds() {
+        endSel.innerHTML = '';
+        const sVal = startSel.value;
+        if (!sVal) { if (submitBtn) submitBtn.disabled = true; return; }
+        const sMin = toMin(sVal);
+        for (let m = sMin + 30; m <= DAY_END; m += 30) {
+          const e = minToHH(m);
+          const isBusy = taken.some(mtg => isOverlapping(sVal, e, mtg.start, mtg.end));
+          const opt = document.createElement('option');
+          opt.value = e;
+          opt.textContent = e;
+          if (isBusy) {
+            opt.disabled = true;
+            opt.style.background = '#888';
+            opt.style.color = '#fff';
+          }
+          endSel.appendChild(opt);
+        }
+
+        // ตั้งค่า preEnd ถ้าเป็นครั้งแรก
+        if (preEnd && Array.from(endSel.options).some(o => o.value === preEnd && !o.disabled)) {
+          endSel.value = preEnd;
+        } else {
+          const firstAvailable = Array.from(endSel.options).find(o => !o.disabled);
+          if (firstAvailable) endSel.value = firstAvailable.value;
+        }
+        if (submitBtn) submitBtn.disabled = endSel.options.length === 0 || !endSel.value;
+      }
+
+      startSel.onchange = rebuildEnds;
+      rebuildEnds();
+    }
+
+    // ✅ ครึ่งชั่วโมง 08:00–18:00 + filter เฉพาะ "ตั้งแต่ตอนนี้" เมื่อเป็นวันนี้ (เก่า - เก็บไว้เพื่อ compatibility)
+    window.fillTimeSelects = async function (roomId, dateStr, preStart = null, preEnd = null) {
+      // ถ้ามี preStart/preEnd แสดงว่าเป็นโหมดแก้ไข
+      if (preStart && preEnd) {
+        const currentBookingId = document.getElementById('bookingId')?.value || null;
+        return fillTimeSelectsForEdit(roomId, dateStr, preStart, preEnd, currentBookingId);
+      } else {
+        return fillTimeSelectsForCreate(roomId, dateStr);
+      }
+    }
+
+    // ฟังก์ชันเก่า (ย้ายมาจากด้านบน)
+    async function fillTimeSelectsOld(roomId, dateStr, preStart = null, preEnd = null) {
+      // Get fresh references to DOM elements every time
+      const startSel = document.getElementById('startTime');
+      const endSel = document.getElementById('endTime');
+
+
+
+      // Force clear และ refresh DOM
+      startSel.innerHTML = '';
+      endSel.innerHTML = '';
+      startSel.onchange = null; // Clear event listener
+
+      // Force DOM refresh
+      startSel.style.display = 'none';
+      endSel.style.display = 'none';
+
+      // Wait for DOM to update
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      startSel.style.display = '';
+      endSel.style.display = '';
+
+      const submitBtn = bookingForm.querySelector('button[type="submit"]');
+      if (!roomId || !dateStr) { if (submitBtn) submitBtn.disabled = true; return; }
+
+      const DAY_START = 8 * 60;
+      const DAY_END = 19 * 60;
+      const todayStr = toYmd(new Date());
+      // ดึง booking ID ปัจจุบัน (สำหรับโหมดแก้ไข)
+      const currentBookingId = document.getElementById('bookingId')?.value || null;
+
+      const taken = await fetchDayMeetings(dateStr, roomId, currentBookingId);
+
 
       // ==== เตรียม start slots (ทุก 30 นาที) ====
       let startMin = DAY_START;
@@ -1110,6 +1375,8 @@
       for (const s of startCandidates) {
         // ตรวจสอบว่าช่วงเวลานี้ถูกจองแล้วหรือไม่
         const isBusy = taken.some(m => isOverlapping(s, minToHH(toMin(s) + 30), m.start, m.end));
+
+
         const opt = document.createElement('option');
         opt.value = s;
         opt.textContent = s;
@@ -1121,15 +1388,24 @@
         startSel.appendChild(opt);
       }
       // เลือกค่า default
-      if (preStart && startCandidates.includes(preStart)) startSel.value = preStart;
-      else {
+
+      if (preStart && startCandidates.includes(preStart)) {
+        startSel.value = preStart;
+
+      } else {
         // เลือก option แรกที่ไม่ disabled
         const firstAvailable = Array.from(startSel.options).find(o => !o.disabled);
-        if (firstAvailable) startSel.value = firstAvailable.value;
+        if (firstAvailable) {
+          startSel.value = firstAvailable.value;
+
+        } else {
+
+        }
       }
 
       // ==== end slots (ทุก 30 นาที, > start และ ≤ 19:00) ====
       function rebuildEnds() {
+
         endSel.innerHTML = '';
         const sVal = startSel.value;
         if (!sVal) { if (submitBtn) submitBtn.disabled = true; return; }
@@ -1138,6 +1414,9 @@
           const e = minToHH(m);
           // ตรวจสอบว่าช่วงเวลานี้ถูกจองแล้วหรือไม่
           const isBusy = taken.some(mtg => isOverlapping(sVal, e, mtg.start, mtg.end));
+
+
+
           const opt = document.createElement('option');
           opt.value = e;
           opt.textContent = e;
@@ -1153,11 +1432,39 @@
         if (firstAvailable) endSel.value = firstAvailable.value;
         if (submitBtn) submitBtn.disabled = endSel.options.length === 0 || !firstAvailable;
       }
-      startSel.onchange = rebuildEnds;
+
+      // ลบ event listener เก่าก่อน (ถ้ามี) และสร้าง function ใหม่
+      startSel.onchange = null;
+      startSel.onchange = () => rebuildEnds();
+
+      // เรียก rebuildEnds ครั้งแรก
       rebuildEnds();
+
+      // ตั้งค่า preEnd หลังจาก rebuildEnds เสร็จ (สำหรับโหมดแก้ไข)
+      if (preEnd) {
+        const targetOption = Array.from(endSel.options).find(o => o.value === preEnd);
+        if (targetOption && !targetOption.disabled) {
+          endSel.value = preEnd;
+        }
+      }
     }
 
     function openBookingModal({ mode, roomId = null, roomName = null, start = null, end = null, date = null, meeting = null } = {}) {
+      // Force recreate select elements
+      const startSel = document.getElementById('startTime');
+      const endSel = document.getElementById('endTime');
+
+      // Clone และ replace elements เพื่อ clear ทุก state
+      const newStartSel = startSel.cloneNode(false);
+      const newEndSel = endSel.cloneNode(false);
+      newStartSel.id = 'startTime';
+      newStartSel.className = startSel.className;
+      newEndSel.id = 'endTime';
+      newEndSel.className = endSel.className;
+
+      startSel.parentNode.replaceChild(newStartSel, startSel);
+      endSel.parentNode.replaceChild(newEndSel, endSel);
+
       $('#bookingId').value = meeting ? meeting.id : '';
       editingMeeting = null; // reset
 
@@ -1175,12 +1482,18 @@
         fillRoomDropdown(roomSelect);
 
         const dateInput = $('#bookingDate');
-        if (!dateInput.value) dateInput.value = toYmd(new Date());
+        // ไม่ตั้งค่าวันที่อัตโนมัติ ให้ผู้ใช้เลือกเอง
+        // หรือใช้ค่าเก่าถ้ามี
+        if (!dateInput.value) {
+          dateInput.value = toYmd(new Date());
+        }
+
 
         // ✅ รองรับ preStart/preEnd ที่ส่งมา
-        fillTimeSelects(roomSelect.value, dateInput.value, start, end);
+
+        fillTimeSelectsForCreate(roomSelect.value, dateInput.value);
         roomSelect.onchange = () => {
-          fillTimeSelects(roomSelect.value, dateInput.value, start, end);
+          fillTimeSelectsForCreate(roomSelect.value, dateInput.value);
           // อัปเดตฟิลด์ชั้นทุกครั้งที่เปลี่ยนห้อง
           const selectedOption = roomSelect.options[roomSelect.selectedIndex];
           if (selectedOption && selectedOption.getAttribute('data-floor')) {
@@ -1191,7 +1504,7 @@
             $('#roomFloor').value = '';
           }
         };
-        dateInput.onchange = () => fillTimeSelects(roomSelect.value, dateInput.value, start, end);
+        dateInput.onchange = () => fillTimeSelectsForCreate(roomSelect.value, dateInput.value);
 
         // อัปเดตฟิลด์ชั้นเมื่อ modal เปิด
         const selectedOption = roomSelect.options[roomSelect.selectedIndex];
@@ -1255,13 +1568,22 @@
         btnDel.onclick = async () => {
           const canDelete = (currentUser.role === 'admin' || currentUser.user.uid === meeting.userId);
           if (!canDelete) { showPopup('คุณไม่มีสิทธิ์ลบรายการนี้'); return; }
-          try { await deleteDoc(doc(db, 'meetings', meeting.id)); showToast('ลบการจองแล้ว'); modal.hide(); }
+          try {
+            await deleteDoc(doc(db, 'meetings', meeting.id));
+            showToast('ลบการจองแล้ว');
+            modal.hide();
+
+            // Force refresh calendar ทั้งหมด และ status panel
+            refreshCalendarData();
+            renderStatusPanelByRoom();
+          }
           catch (e) { console.error(e); showPopup('ลบไม่สำเร็จ'); }
         };
 
         $('#modalTitle').textContent = 'แก้ไขการจอง';
+
         fillTimeSelects(meeting.roomId, meeting.date, meeting.start, meeting.end);
-        $('#bookingDate').onchange = () => fillTimeSelects(meeting.roomId, $('#bookingDate').value, meeting.start, meeting.end);
+        $('#bookingDate').onchange = () => fillTimeSelects(meeting.roomId, $('#bookingDate').value);
         modal.show();
         return;
       }
@@ -1325,6 +1647,10 @@
           showToast('จองสำเร็จ');
         }
         modal.hide();
+
+        // Force refresh calendar ทั้งหมด และ status panel
+        refreshCalendarData();
+        renderStatusPanelByRoom();
       } catch (err) {
         console.error(err);
         showPopup('บันทึกไม่สำเร็จ');
@@ -1466,10 +1792,9 @@
     // ---- Init ----
     function init() {
       document.getElementById('btnQuickAdd').addEventListener('click', () => {
-        // เปิด modal โดยตั้งเวลาครึ่งชั่วโมงถัดไป (วันนี้) หรือ 08:00–09:00 (วันอื่น)
+        // เปิด modal ปกติ
         const today = new Date();
         const todayStr = toYmd(today);
-        const clickedStr = toYmd(today);
         let sMin, eMin;
         const nowMin = toMin(nowHM());
         sMin = Math.min(Math.max(8 * 60, roundUpToNext30(nowMin)), 19 * 60 - 30);
