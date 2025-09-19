@@ -1141,7 +1141,7 @@
       rooms.forEach(r => {
         const opt = document.createElement('option');
         const floor = r.location || r.floor || r.level || '';
-        const displayName = floor ? `${r.name || '(ไม่มีชื่อ)'} ชั้น${floor}` : (r.name || '(ไม่มีชื่อ)');
+        const displayName = r.name || '(ไม่มีชื่อ)'; // แสดงเฉพาะชื่อห้อง ไม่รวมชั้น
         opt.value = r.id;
         opt.textContent = displayName;
         // ใช้ location แทน floor/level
