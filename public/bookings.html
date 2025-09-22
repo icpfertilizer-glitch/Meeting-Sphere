@@ -889,42 +889,9 @@
     function refreshCalendarData() {
       if (!calendar) return;
 
-      // วิธีที่ 1: ลบ subscription เก่าและสร้างใหม่
-      if (unsubCal) {
-        unsubCal();
-        unsubCal = null;
-      }
-
-      // วิธีที่ 2: Query ข้อมูลใหม่ทั้งหมดโดยไม่จำกัด range
-      const today = new Date();
-      const startDate = new Date(today.getFullYear() - 1, 0, 1); // 1 ปีที่แล้ว
-      const endDate = new Date(today.getFullYear() + 1, 11, 31); // 1 ปีข้างหน้า
-
-      const startStr = ymd(startDate);
-      const endStr = ymd(endDate);
-
-      const qRef = query(
-        meetingsRef,
-        where('date', '>=', startStr),
-        where('date', '<=', endStr),
-        orderBy('date')
-      );
-
-      // Subscribe ใหม่กับ range กว้างๆ
-      unsubCal = onSnapshot(qRef, snap => {
-        const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-        // Clear events เก่าทั้งหมด
-        calendar.removeAllEvents();
-
-        // เพิ่ม events ใหม่ทั้งหมด
-        const events = toEvents(docs);
-        events.forEach(event => {
-          calendar.addEvent(event);
-        });
-      }, err => {
-        console.error('Refresh calendar error:', err);
-      });
+      // ✅ แก้ไขปัญหา: ใช้ refetchEvents แทนการ subscribe ใหม่
+      // เพื่อให้ FullCalendar จัดการ range เอง
+      calendar.refetchEvents();
     }
 
     function toEvents(docs) {
@@ -945,16 +912,10 @@
     }
 
     function subscribeCalendarRange(info, successCallback, failureCallback) {
-      // ขยาย range ให้กว้างขึ้น เพื่อให้ครอบคลุมข้อมูลที่อาจจะอยู่นอกหน้าจอ
-      const startDate = new Date(info.start);
-      const endDate = new Date(info.end);
-
-      // ขยายไปข้างหลัง 2 เดือน และข้างหน้า 2 เดือน
-      startDate.setMonth(startDate.getMonth() - 2);
-      endDate.setMonth(endDate.getMonth() + 2);
-
-      const startStr = ymd(startDate);
-      const endStr = ymd(new Date(endDate.getTime() - 24 * 60 * 60 * 1000)); // exclusive
+      // ✅ แก้ไขปัญหา: ใช้ range ที่แน่นอนตาม FullCalendar โดยไม่ขยาย
+      // เพื่อป้องกันการแสดงการจองข้ามเดือน
+      const startStr = ymd(info.start);
+      const endStr = ymd(new Date(info.end.getTime() - 24 * 60 * 60 * 1000)); // exclusive
 
       if (unsubCal) { unsubCal(); unsubCal = null; }
 
@@ -967,11 +928,8 @@
 
       unsubCal = onSnapshot(qRef, snap => {
         const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        // Filter เฉพาะข้อมูลที่อยู่ใน range จริงๆ ของ calendar
-        const originalStartStr = ymd(info.start);
-        const originalEndStr = ymd(new Date(info.end.getTime() - 24 * 60 * 60 * 1000));
-        const filteredDocs = docs.filter(d => d.date >= originalStartStr && d.date <= originalEndStr);
-        successCallback(toEvents(filteredDocs));
+        // ✅ ไม่ต้อง filter เพิ่ม เพราะ query แล้วแน่นอน
+        successCallback(toEvents(docs));
       }, err => {
         console.error('Calendar range error:', err);
         if (failureCallback) failureCallback(err);
@@ -1019,6 +977,8 @@
         height: 'auto',
         locale: 'th',
         firstDay: 0,
+        fixedWeekCount: false,        // ✅ แสดงเฉพาะสัปดาห์ที่จำเป็น ไม่บังคับ 6 สัปดาห์
+        showNonCurrentDates: true,    // ✅ แสดงวันที่นอกเดือนปัจจุบัน (วันที่เทา)
         selectable: true,
         nowIndicator: true,
         allDaySlot: false,
@@ -1100,6 +1060,12 @@
       $('#bookingId').value = '';
       editingMeeting = null;
       bookingForm.reset();
+      
+      // ✅ แก้ไขปัญหา: รีเซ็ตชื่อผู้ดำเนินการกลับเป็นผู้ล็อกอินปัจจุบัน
+      const opNameEl = document.getElementById('loginOperatorName');
+      if (opNameEl && currentUser) {
+        opNameEl.textContent = currentUser.name || 'ผู้ใช้';
+      }
     });
     const bookingForm = document.getElementById('bookingForm');
     const startSel = document.getElementById('startTime');
