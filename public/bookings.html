@@ -689,6 +689,13 @@
         </div>
         <div class="modal-body">
           <input type="hidden" id="bookingId">
+          
+          <!-- ✅ ข้อความแจ้งเตือนสำหรับโหมด view -->
+          <div id="viewModeAlert" class="alert alert-info d-none" role="alert">
+            <i class="bi bi-info-circle me-2"></i>
+            <strong>โหมดดูอย่างเดียว:</strong> คุณสามารถดูรายละเอียดการจองนี้ได้ แต่ไม่สามารถแก้ไขได้
+          </div>
+          
           <div class="mt-2">
             <label class="form-label">ชื่อผู้จอง</label>
             <input type="text" id="bookerName" class="form-control">
@@ -889,9 +896,25 @@
     function refreshCalendarData() {
       if (!calendar) return;
 
-      // ✅ แก้ไขปัญหา: ใช้ refetchEvents แทนการ subscribe ใหม่
-      // เพื่อให้ FullCalendar จัดการ range เอง
+      console.log('🔄 Refreshing calendar data...');
+      
+      // ✅ แก้ไขปัญหา: ใช้หลายวิธีร่วมกันเพื่อให้แน่ใจว่า calendar อัปเดต
+      // วิธีที่ 1: refetch events ทันที
       calendar.refetchEvents();
+      
+      // วิธีที่ 2: ตรวจสอบอีกครั้งหลังจาก delay
+      setTimeout(() => {
+        if (calendar) {
+          const currentEvents = calendar.getEvents();
+          console.log('📊 Current events in calendar:', currentEvents.length);
+          
+          // ถ้า refetch ครั้งแรกไม่ได้ผล ให้ลองอีกครั้ง
+          if (currentEvents.length === 0) {
+            console.log('⚠️ No events found, trying again...');
+            calendar.refetchEvents();
+          }
+        }
+      }, 300);
     }
 
     function toEvents(docs) {
@@ -917,6 +940,9 @@
       const startStr = ymd(info.start);
       const endStr = ymd(new Date(info.end.getTime() - 24 * 60 * 60 * 1000)); // exclusive
 
+      // ✅ เก็บ range ปัจจุบันเพื่อใช้ในการ refresh
+      window.currentCalendarRange = { startStr, endStr };
+
       if (unsubCal) { unsubCal(); unsubCal = null; }
 
       const qRef = query(
@@ -928,6 +954,7 @@
 
       unsubCal = onSnapshot(qRef, snap => {
         const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        console.log('📅 Calendar data loaded:', docs.length, 'meetings for range', startStr, 'to', endStr);
         // ✅ ไม่ต้อง filter เพิ่ม เพราะ query แล้วแน่นอน
         successCallback(toEvents(docs));
       }, err => {
@@ -1039,8 +1066,10 @@
           if (!m) return;
           const isOwner = currentUser && currentUser.user.uid === m.userId;
           const isAdmin = currentUser && currentUser.role === 'admin';
-          if (!isOwner && !isAdmin) return;   // ✅ กันกดแก้ไขถ้าไม่ใช่เจ้าของ/แอดมิน
-          openBookingModal({ mode: 'edit', meeting: m, roomId: m.roomId, roomName: m.roomName, date: m.date });
+          
+          // ✅ ให้ทุกคนสามารถเปิด modal ได้ แต่จะเป็นโหมด view หรือ edit ขึ้นอยู่กับสิทธิ์
+          const mode = (isOwner || isAdmin) ? 'edit' : 'view';
+          openBookingModal({ mode, meeting: m, roomId: m.roomId, roomName: m.roomName, date: m.date });
         }
       });
 
@@ -1061,7 +1090,24 @@
       editingMeeting = null;
       bookingForm.reset();
       
-      // ✅ แก้ไขปัญหา: รีเซ็ตชื่อผู้ดำเนินการกลับเป็นผู้ล็อกอินปัจจุบัน
+      // ✅ ซ่อนข้อความแจ้งเตือนโหมด view
+      const viewAlert = $('#viewModeAlert');
+      if (viewAlert) viewAlert.classList.add('d-none');
+      
+      // ✅ รีเซ็ต readonly state
+      $('#bookerName').readOnly = false;
+      $('#roomName').readOnly = false; 
+      $('#bookingDate').readOnly = false;
+      $('#title').readOnly = false;
+      $('#contact').readOnly = false;
+      $('#startTime').disabled = false;
+      $('#endTime').disabled = false;
+      
+      // ✅ แสดงปุ่มบันทึกกลับมา
+      const submitBtn = bookingForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.style.display = '';
+      
+      // ✅ รีเซ็ตชื่อผู้ดำเนินการกลับเป็นผู้ล็อกอินปัจจุบัน
       const opNameEl = document.getElementById('loginOperatorName');
       if (opNameEl && currentUser) {
         opNameEl.textContent = currentUser.name || 'ผู้ใช้';
@@ -1539,9 +1585,12 @@
             showToast('ลบการจองแล้ว');
             modal.hide();
 
-            // Force refresh calendar ทั้งหมด และ status panel
-            refreshCalendarData();
-            renderStatusPanelByRoom();
+            // ✅ Force refresh calendar ทั้งหมด และ status panel
+            // เพิ่ม delay เพื่อให้ Firebase sync เสร็จก่อน
+            setTimeout(() => {
+              refreshCalendarData();
+              renderStatusPanelByRoom();
+            }, 200);
           }
           catch (e) { console.error(e); showPopup('ลบไม่สำเร็จ'); }
         };
@@ -1553,10 +1602,68 @@
         modal.show();
         return;
       }
+
+      if (mode === 'view') {
+        // ✅ โหมดดูอย่างเดียวสำหรับผู้ที่ไม่มีสิทธิ์แก้ไข
+        editingMeeting = meeting; // เก็บไว้เพื่อป้องกันการบันทึก
+
+        roomSelectWrap.classList.add('d-none');
+        roomNameWrap.classList.remove('d-none');
+        $('#roomId').value = meeting.roomId;
+        $('#roomName').value = meeting.roomName;
+        $('#bookingDate').value = meeting.date;
+        $('#title').value = meeting.title || '';
+        $('#contact').value = meeting.contact || '';
+        bookerEl.value = meeting.bookerName || meeting.userName || currentUser?.name || '';
+
+        // แสดงชื่อผู้ดำเนินการจากข้อมูลการจองเดิม (คนที่จองจริงๆ)
+        const operatorName = meeting.userName || 'ไม่ระบุ';
+        const opNameEl = document.getElementById('loginOperatorName');
+        if (opNameEl) opNameEl.textContent = operatorName;
+
+        // แสดงข้อความแจ้งเตือน
+        const viewAlert = $('#viewModeAlert');
+        if (viewAlert) viewAlert.classList.remove('d-none');
+
+        // ทำให้ทุก form element เป็น readonly
+        $('#bookerName').readOnly = true;
+        $('#roomName').readOnly = true; 
+        $('#bookingDate').readOnly = true;
+        $('#title').readOnly = true;
+        $('#contact').readOnly = true;
+
+        // สร้าง time selects แต่ทำให้เป็น readonly
+        fillTimeSelects(meeting.roomId, meeting.date, meeting.start, meeting.end);
+        setTimeout(() => {
+          $('#startTime').disabled = true;
+          $('#endTime').disabled = true;
+        }, 100);
+
+        // ซ่อนปุ่มลบและแก้ไขชื่อ modal
+        const btnDel = $('#btnDelete');
+        btnDel.classList.add('d-none');
+        $('#modalTitle').textContent = 'รายละเอียดการจอง (ดูอย่างเดียว)';
+
+        // ซ่อนปุ่มบันทึก และแสดงเฉพาะปุ่มปิด
+        const modalFooter = bookingForm.querySelector('.modal-footer');
+        const submitBtn = bookingForm.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.style.display = 'none';
+
+        modal.show();
+        return;
+      }
     }
 
     bookingForm.addEventListener('submit', async (e) => {
       e.preventDefault();
+      
+      // ✅ ป้องกันการบันทึกในโหมด view
+      const modalTitle = $('#modalTitle').textContent;
+      if (modalTitle && modalTitle.includes('ดูอย่างเดียว')) {
+        showPopup('คุณไม่สามารถแก้ไขการจองนี้ได้'); 
+        return;
+      }
+      
       const id = $('#bookingId').value;
 
       // room
@@ -1614,9 +1721,19 @@
         }
         modal.hide();
 
-        // Force refresh calendar ทั้งหมด และ status panel
-        refreshCalendarData();
-        renderStatusPanelByRoom();
+        // ✅ การแก้ไขปัญหา: ไม่ต้องพึ่ง manual refresh เยอะ
+        // ให้ onSnapshot ทำงานเป็นหลัก แต่มี fallback เผื่อไว้
+        console.log('✅ Booking saved, waiting for realtime update...');
+        
+        // Fallback refresh หากไม่เห็นการเปลี่ยนแปลงภายใน 1 วินาที
+        setTimeout(() => {
+          const events = calendar ? calendar.getEvents() : [];
+          console.log('� Events check after booking:', events.length);
+          
+          // ถ้าไม่เห็นการจองใหม่ ให้ force refresh
+          refreshCalendarData();
+          renderStatusPanelByRoom();
+        }, 1000);
       } catch (err) {
         console.error(err);
         showPopup('บันทึกไม่สำเร็จ');
