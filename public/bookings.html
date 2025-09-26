@@ -924,6 +924,14 @@
         const end = `${m.date}T${m.end}:00`;
         const mine = currentUser && currentUser.user.uid === m.userId;
         const isAdminView = currentUser && currentUser.role === 'admin';
+        
+        // ค้นหาชื่อห้องจาก rooms array ถ้าไม่มีใน meeting
+        let roomName = m.roomName;
+        if (!roomName && m.roomId) {
+          const roomData = rooms.find(r => r.id === m.roomId);
+          roomName = roomData ? roomData.name : 'ห้องประชุม';
+        }
+        
         return {
           id: m.id,
           start,
@@ -968,13 +976,18 @@
       const m = arg.event.extendedProps.meeting;
       const mine = arg.event.extendedProps.mine;
       const isAdminView = arg.event.extendedProps.isAdminView;
-      const roomName = arg.event.extendedProps.roomName;
-      const hue = hueFromString(m.roomId || roomName || '');
+      // ดึงชื่อห้องจาก meeting data หรือหาจาก rooms array
+      let roomName = m.roomName;
+      if (!roomName && m.roomId) {
+        const roomData = rooms.find(r => r.id === m.roomId);
+        roomName = roomData ? roomData.name : 'ห้องประชุม';
+      }
+      const hue = hueFromString(m.roomId || '');
 
       // หาข้อมูลห้องเพื่อดึง floor
       const roomData = rooms.find(r => r.id === m.roomId);
       const floor = roomData ? (roomData.location || roomData.floor || roomData.level) : null;
-      const displayName = floor ? `${roomName || 'ห้อง'} ชั้น${floor}` : (roomName || 'ห้อง');
+      const displayName = floor ? `${roomName} ชั้น${floor}` : roomName;
 
       // Compact: แสดงเฉพาะ "เวลา + ห้อง + ชั้น"
       const root = document.createElement('div');
@@ -1156,8 +1169,9 @@
         const displayName = r.name || '(ไม่มีชื่อ)'; // แสดงเฉพาะชื่อห้อง ไม่รวมชั้น
         opt.value = r.id;
         opt.textContent = displayName;
-        // ใช้ location แทน floor/level
+        // ใช้ location แทน floor/level และเก็บชื่อห้องไว้ใน data attribute
         opt.setAttribute('data-floor', floor);
+        opt.setAttribute('data-room-name', displayName);
         selectEl.appendChild(opt);
       });
     }
@@ -1670,11 +1684,13 @@
       let roomId = $('#roomId').value;
       let roomName = $('#roomName').value;
       const roomSelectWrap = $('#roomSelectWrap');
-      if (!roomId && !roomName && !roomSelectWrap.classList.contains('d-none')) {
+      // ดึงข้อมูลห้องจาก roomSelect หรือ roomName input
+      if (roomSelectWrap && !roomSelectWrap.classList.contains('d-none')) {
         const sel = $('#roomSelect');
+        const selectedOption = sel.options[sel.selectedIndex];
         roomId = sel.value;
-        const roomObj = rooms.find(r => r.id === roomId);
-        roomName = roomObj ? (roomObj.name || '') : '';
+        roomName = selectedOption.getAttribute('data-room-name') || selectedOption.textContent || 'ห้องประชุม';
+        console.log('Selected room:', roomId, 'roomName:', roomName);
       }
 
       const dateStr = $('#bookingDate').value;
