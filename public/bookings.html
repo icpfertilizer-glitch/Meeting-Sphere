@@ -942,35 +942,68 @@
       });
     }
 
-    function subscribeCalendarRange(info, successCallback, failureCallback) {
-      // ✅ แก้ไขปัญหา: ใช้ range ที่แน่นอนตาม FullCalendar โดยไม่ขยาย
-      // เพื่อป้องกันการแสดงการจองข้ามเดือน
-      const startStr = ymd(info.start);
-      const endStr = ymd(new Date(info.end.getTime() - 24 * 60 * 60 * 1000)); // exclusive
+// เราจะเปลี่ยนชื่อฟังก์ชันเป็น fetchCalendarRange เพื่อสื่อความหมายที่ชัดเจนขึ้น
+    // และเปลี่ยนไปใช้ getDocs เพื่อดึงข้อมูลเพียงครั้งเดียว
+    async function fetchCalendarRange(info, successCallback, failureCallback) {
+      try {
+        const startStr = ymd(info.start);
+        // FullCalendar ส่ง info.end มาเป็นวันแรกของสัปดาห์ถัดไป เราจึงใช้ '<' เพื่อไม่ให้รวมวันนั้นเข้ามา
+        const endStr = ymd(info.end);
+        
+        console.log(`[Calendar] กำลังดึงข้อมูล (fetch) ช่วง: ${startStr} ถึง ${endStr}`);
 
-      // ✅ เก็บ range ปัจจุบันเพื่อใช้ในการ refresh
-      window.currentCalendarRange = { startStr, endStr };
+        // สร้าง query เพื่อดึงข้อมูลในช่วงวันที่ที่ต้องการ
+        const qRef = query(
+          meetingsRef,
+          where('date', '>=', startStr),
+          where('date', '<', endStr)
+        );
 
-      if (unsubCal) { unsubCal(); unsubCal = null; }
-
-      const qRef = query(
-        meetingsRef,
-        where('date', '>=', startStr),
-        where('date', '<=', endStr),
-        orderBy('date')
-      );
-
-      unsubCal = onSnapshot(qRef, snap => {
+        // ใช้ getDocs() เพื่อดึงข้อมูลชุดเดียว ไม่ใช่ realtime
+        const snap = await getDocs(qRef);
         const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-        console.log('📅 Calendar data loaded:', docs.length, 'meetings for range', startStr, 'to', endStr);
-        // ✅ ไม่ต้อง filter เพิ่ม เพราะ query แล้วแน่นอน
+        
+        console.log(`[Calendar] ดึงข้อมูลสำเร็จ: ${docs.length} รายการ`);
+        
+        // ส่งข้อมูลที่แปลงแล้วกลับไปให้ FullCalendar
         successCallback(toEvents(docs));
-      }, err => {
-        console.error('Calendar range error:', err);
+
+      } catch (err) {
+        console.error('[Calendar] เกิดข้อผิดพลาดในการดึงข้อมูล (fetch):', err);
         if (failureCallback) failureCallback(err);
-        successCallback([]);
-      });
+        successCallback([]); // ส่งค่าว่างกลับไปหากเกิดข้อผิดพลาด
+      }
     }
+
+    // function subscribeCalendarRange(info, successCallback, failureCallback) {
+    //   // ✅ แก้ไขปัญหา: ใช้ range ที่แน่นอนตาม FullCalendar โดยไม่ขยาย
+    //   // เพื่อป้องกันการแสดงการจองข้ามเดือน
+    //   const startStr = ymd(info.start);
+    //   const endStr = ymd(new Date(info.end.getTime() - 24 * 60 * 60 * 1000)); // exclusive
+
+    //   // ✅ เก็บ range ปัจจุบันเพื่อใช้ในการ refresh
+    //   window.currentCalendarRange = { startStr, endStr };
+
+    //   if (unsubCal) { unsubCal(); unsubCal = null; }
+
+    //   const qRef = query(
+    //     meetingsRef,
+    //     where('date', '>=', startStr),
+    //     where('date', '<=', endStr),
+    //     orderBy('date')
+    //   );
+
+    //   unsubCal = onSnapshot(qRef, snap => {
+    //     const docs = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    //     console.log('📅 Calendar data loaded:', docs.length, 'meetings for range', startStr, 'to', endStr);
+    //     // ✅ ไม่ต้อง filter เพิ่ม เพราะ query แล้วแน่นอน
+    //     successCallback(toEvents(docs));
+    //   }, err => {
+    //     console.error('Calendar range error:', err);
+    //     if (failureCallback) failureCallback(err);
+    //     successCallback([]);
+    //   });
+    // }
 
     function renderEventContent(arg) {
       const m = arg.event.extendedProps.meeting;
@@ -1032,7 +1065,9 @@
 
         headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' },
 
-        events: (info, success, failure) => subscribeCalendarRange(info, success, failure),
+        //events: (info, success, failure) => subscribeCalendarRange(info, success, failure),
+        events: fetchCalendarRange, // <--- แก้ไขบรรทัดนี้
+        
         eventContent: renderEventContent,
 
         dateClick: (info) => {
